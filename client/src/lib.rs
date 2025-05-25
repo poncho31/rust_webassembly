@@ -60,6 +60,8 @@ async fn create_user(name: String, email: String) -> Result<(), JsValue> {
         &opts
     )?;
 
+
+
     request.headers().set("Accept", "application/json")?;
     request.headers().set("Content-Type", "application/json")?;
     
@@ -68,9 +70,6 @@ async fn create_user(name: String, email: String) -> Result<(), JsValue> {
     let _: web_sys::Response = resp.dyn_into()?;
 
     Ok(())
-
-
-
 }
 
 
