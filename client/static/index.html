@@ -1,36 +1,27 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>SPA Rust+Wasm</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>WebAssembly + Rust</title>
+    <style>
+        .user-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+    </style>
+    <script type="module">
+        import init from "/pkg/client.js";
+        init();
+    </script>
+</head>
 <body>
-  
-  <h1>Utilisateurs</h1>
-
-  <form id="form">
-    <input id="name"  placeholder="Nom"  />
-    <input id="email" placeholder="Email"/>
-    <button>+</button>
-  </form>
-
-  <div id="users"></div>
-
-  <script type="module">
-    import init from "../pkg/client.js";
-    init().catch(console.error);
-    document.getElementById("form").addEventListener("submit", async e => {
-      e.preventDefault();
-      await fetch("/api/users", {
-        method  : "POST",
-        headers :{
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify(
-          {
-            name  : document.getElementById("name").value,
-            email : document.getElementById("email").value
-          }
-        )
-      });
-    });
-  </script>
+    <h1>Utilisateurs</h1>
+    <form id="form">
+        <input id="name" placeholder="Name" required />
+        <input id="email" placeholder="Email" required type="email" />
+        <button type="submit">Add User</button>
+    </form>
+    <div id="users"></div>
 </body>
 </html>

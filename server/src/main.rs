@@ -7,6 +7,8 @@ use anyhow::Error;
 use dotenv::dotenv;
 use std::env;
 use uuid::Uuid;
+use actix_cors::Cors;
+use actix_web::http::header;
 
 #[derive(Deserialize)]
 struct CreateUser {
@@ -28,8 +30,8 @@ impl From<User> for ResponseUser {
 }
 
 async fn create_database() -> Result<(), Error> {
-    let pg_host = env::var("PG_HOST").expect("PG_HOST must be set");
-    let pg_user = env::var("PG_USER").expect("PG_USER must be set");
+    let pg_host     = env::var("PG_HOST").expect("PG_HOST must be set");
+    let pg_user     = env::var("PG_USER").expect("PG_USER must be set");
     let pg_password = env::var("PG_PASSWORD").expect("PG_PASSWORD must be set");
     let pg_database = env::var("PG_DATABASE").expect("PG_DATABASE must be set");
     
@@ -47,7 +49,7 @@ async fn create_database() -> Result<(), Error> {
                 // Tentative de création de la base de données
                 let query = format!("CREATE DATABASE {}", pg_database);
                 match sqlx::query(&query).execute(&pool).await {
-                    Ok(_) => println!("Database created successfully"),
+                    Ok(_)  => println!("Database created successfully"),
                     Err(e) => println!("Database creation failed (might already exist): {}", e),
                 }
                 Ok(())
@@ -184,31 +186,47 @@ async fn main() -> std::io::Result<()> {
 
     match init_db().await {
         Ok(pool) => {
-            // Utiliser un chemin relatif depuis le répertoire du serveur
             let static_path = std::env::current_dir()?.join("client").join("static");
+            let pkg_path = std::env::current_dir()?.join("client").join("static").join("pkg");
             
             println!("Static files path: {:?}", static_path);
+            println!("WASM pkg path: {:?}", pkg_path);
             
-            // Vérification stricte des chemins
             assert!(static_path.exists(), "Static directory not found!");
+            assert!(pkg_path.exists(), "WASM pkg directory not found!");
             assert!(static_path.join("index.html").exists(), "index.html not found!");
-            
-            println!("Server → http://{}:{}", host, port);
-            println!("Serving static files from: {:?}", static_path);
 
             HttpServer::new(move || {
+                let cors = Cors::permissive()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header()
+                    .expose_headers(vec![
+                        "content-type",
+                        "content-length",
+                        "accept",
+                    ])
+                    .max_age(3600);
+
                 App::new()
                     .wrap(actix_web::middleware::Logger::default())
+                    .wrap(cors)
                     .app_data(web::Data::new(pool.clone()))
                     .service(web::scope("/api")
                         .service(list_users)
-                        .service(add_user))
+                        .service(add_user)
+                    )
+                    .service(
+                        Files::new("/pkg", &pkg_path)
+                            .show_files_listing()
+                    )
                     .service(
                         Files::new("/", &static_path)
                             .index_file("index.html")
-                            .prefer_utf8(true)
-                            .disable_content_disposition()
                     )
+                    .default_service(web::route().to(|| async {
+                        HttpResponse::NotFound().body("Not Found")
+                    }))
             })
             .workers(1)
             .bind((host, port))?
