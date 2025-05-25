@@ -1,3 +1,16 @@
+[package]
+name = "wasm_fullstack"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+walkdir = "2"
+
+[dependencies]
+server = { path = "./server" }
+actix-web = "4"
+tokio = { version = "1", features = ["full"] }
+
 [workspace]
 resolver = "2"
 members = [

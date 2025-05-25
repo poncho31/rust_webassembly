@@ -8,7 +8,6 @@ use dotenv::dotenv;
 use std::env;
 use uuid::Uuid;
 use actix_cors::Cors;
-use actix_web::http::header;
 
 #[derive(Deserialize)]
 struct CreateUser {
@@ -50,7 +49,7 @@ async fn create_database() -> Result<(), Error> {
                 let query = format!("CREATE DATABASE {}", pg_database);
                 match sqlx::query(&query).execute(&pool).await {
                     Ok(_)  => println!("Database created successfully"),
-                    Err(e) => println!("Databasealready exist:"),
+                    Err(e) => println!("Database already exist : {}", e ),
                 }
                 Ok(())
             },
@@ -174,8 +173,7 @@ async fn add_user(
 }
 
 // Modifier main pour une meilleure gestion des erreurs
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+pub async fn run_server() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init();
     

@@ -7,7 +7,8 @@ use web_sys::{
 };
 use serde_json::json;
 
-const API_BASE_URL: &str = "http://localhost:8088";
+// Utiliser un chemin relatif puisque le client et l'API sont sur le même domaine
+const API_BASE_URL: &str = "api";
 
 #[wasm_bindgen]
 extern "C" {
@@ -17,13 +18,16 @@ extern "C" {
 
 async fn fetch_users() -> Result<Vec<User>, JsValue> {
     let window = window().unwrap();
+
+
+    
     
     let mut opts = RequestInit::new();
     opts.set_method("GET");
     opts.set_mode(RequestMode::Cors);
     
     let request = Request::new_with_str_and_init(
-        &format!("{}/api/users", API_BASE_URL),
+        &format!("{}/users", API_BASE_URL),
         &opts
     )?;
     
@@ -51,7 +55,7 @@ async fn create_user(name: String, email: String) -> Result<(), JsValue> {
     opts.set_body(&body_js);  // Passer directement la référence sans Some()
     
     let request = Request::new_with_str_and_init(
-        &format!("{}/api/users", API_BASE_URL),
+        &format!("{}/users", API_BASE_URL),
         &opts
     )?;
     
