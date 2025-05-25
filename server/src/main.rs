@@ -50,7 +50,7 @@ async fn create_database() -> Result<(), Error> {
                 let query = format!("CREATE DATABASE {}", pg_database);
                 match sqlx::query(&query).execute(&pool).await {
                     Ok(_)  => println!("Database created successfully"),
-                    Err(e) => println!("Database creation failed (might already exist): {}", e),
+                    Err(e) => println!("Databasealready exist:"),
                 }
                 Ok(())
             },
