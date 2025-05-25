@@ -2,5 +2,6 @@
     #A. POSTGRE WINDOWS: https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 
 #2. WebAssembly
-    #A. Compiler le pkg : cd client && wasm-pack build --target web --out-dir static/pkg && cd .. && cargo run
+    #A. Compiler le pkg : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
+
     #B. Commande :  cargo master 

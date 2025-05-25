@@ -1,4 +1,4 @@
 [alias]
-master = "run --manifest-path client/Cargo.toml --bin wasm-pack build -- --target web --out-dir static/pkg && run -p server"
-build-wasm = "run --manifest-path client/Cargo.toml --bin wasm-pack build -- --target web --out-dir static/pkg"
+master = "exec -- cmd /c \"cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run\""
+build-wasm = "exec -- cmd /c \"cd client & wasm-pack build --target web --out-dir static/pkg\""
 
