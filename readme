@@ -1,0 +1,5 @@
+#1. DATABASE
+    #A. POSTGRE WINDOWS: https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
+
+#2. WebAssembly
+    #A. Compiler le pkg : wasm-pack build --target web --out-dir static/pkg
