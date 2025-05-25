@@ -172,11 +172,13 @@ async fn add_user(
     }
 }
 
+
 // Placer la fonction main avant run_server
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     run_server().await
 }
+
 
 // Modifier main pour une meilleure gestion des erreurs
 pub async fn run_server() -> std::io::Result<()> {

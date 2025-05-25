@@ -54,19 +54,25 @@ async fn create_user(name: String, email: String) -> Result<(), JsValue> {
     let body_js = JsValue::from_str(&body);
     opts.set_body(&body_js);  // Passer directement la référence sans Some()
     
+
     let request = Request::new_with_str_and_init(
         &format!("{}/users", API_BASE_URL),
         &opts
     )?;
-    
+
     request.headers().set("Accept", "application/json")?;
     request.headers().set("Content-Type", "application/json")?;
     
     let window = window().unwrap();
     let resp = JsFuture::from(window.fetch_with_request(&request)).await?;
     let _: web_sys::Response = resp.dyn_into()?;
+
     Ok(())
+
+
+
 }
+
 
 fn display_users(doc: &Document, users: Vec<User>) -> Result<(), JsValue> {
     let users_div = doc.get_element_by_id("users").unwrap();
