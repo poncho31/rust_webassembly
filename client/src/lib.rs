@@ -2,8 +2,8 @@ use core::User;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    window, Document, HtmlElement, HtmlInputElement,
-    Request, RequestInit, RequestMode, Event, Headers,
+    window, Document, HtmlInputElement,
+    Request, RequestInit, RequestMode, Event,
 };
 use serde_json::json;
 
@@ -20,9 +20,9 @@ async fn fetch_users() -> Result<Vec<User>, JsValue> {
     let window = window().unwrap();
 
 
+
     
-    
-    let mut opts = RequestInit::new();
+    let opts = RequestInit::new();
     opts.set_method("GET");
     opts.set_mode(RequestMode::Cors);
     
@@ -42,7 +42,7 @@ async fn fetch_users() -> Result<Vec<User>, JsValue> {
 }
 
 async fn create_user(name: String, email: String) -> Result<(), JsValue> {
-    let mut opts = RequestInit::new();
+    let opts = RequestInit::new();
     opts.set_method("POST");
     opts.set_mode(RequestMode::Cors);
     

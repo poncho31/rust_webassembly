@@ -1,0 +1,4 @@
+[alias]
+master = "run --manifest-path client/Cargo.toml --bin wasm-pack build -- --target web --out-dir static/pkg && run -p server"
+build-wasm = "run --manifest-path client/Cargo.toml --bin wasm-pack build -- --target web --out-dir static/pkg"
+

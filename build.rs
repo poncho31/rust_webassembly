@@ -2,14 +2,13 @@ use std::process::Command;
 use std::env;
 
 fn main() {
-    // Force la recompilation si les fichiers du client changent
-    println!("cargo:rerun-if-changed=client/src");
-    println!("cargo:rerun-if-changed=client/Cargo.toml");
+    println!("cargo:rerun-if-changed=../client/src");
+    println!("cargo:rerun-if-changed=../client/Cargo.toml");
     
-    let current_dir = env::current_dir().unwrap();
-    let client_dir = current_dir.join("client");
+    let workspace_dir = env::current_dir().unwrap().parent().unwrap().to_path_buf();
+    let client_dir = workspace_dir.join("client");
     
-    // Nettoyage du dossier pkg existant
+    // Nettoyage et création du dossier pkg
     let pkg_dir = client_dir.join("static").join("pkg");
     if pkg_dir.exists() {
         std::fs::remove_dir_all(&pkg_dir).unwrap_or_else(|e| {
@@ -23,7 +22,6 @@ fn main() {
 
     println!("cargo:warning=Building WebAssembly package...");
     
-    // Exécuter wasm-pack avec plus de verbosité
     let status = Command::new("wasm-pack")
         .current_dir(&client_dir)
         .args(&[

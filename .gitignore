@@ -12,6 +12,8 @@ Cargo.lock
 /dist/
 /node_modules/
 
+/node_modules/
+
 # Database
 *.db
 *.db-*
@@ -49,5 +51,7 @@ yarn-error.log*
 
 # Config
 .config/
-.cargo/
-config.toml
+
+.cargo/*
+!.cargo/
+!.cargo/config.toml
