@@ -1,8 +1,4 @@
-use serde::{Serialize, Deserialize};
+pub mod db_models;
+pub use db_models::user::User;
 
-#[derive(Serialize, Deserialize)]
-pub struct User {
-    pub id: String,
-    pub name: String,
-    pub email: String,
-}
+use serde::{Serialize, Deserialize};
