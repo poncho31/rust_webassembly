@@ -1,6 +1,6 @@
 use actix_files::Files;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, error::ErrorInternalServerError};
-use core::User;
+use core::{User, http_responses::HttpSendResponse};
 use serde::{Serialize, Deserialize};
 use sqlx::{postgres::PgPoolOptions, PgPool, Pool, Postgres, Row};
 use anyhow::Error;
@@ -8,7 +8,6 @@ use dotenv::dotenv;
 use std::env;
 use uuid::Uuid;
 use actix_cors::Cors;
-use serde_json::json; 
 
 #[derive(Deserialize)]
 struct CreateUser {
@@ -176,10 +175,10 @@ async fn add_user(
 #[get("/ping")]
 async fn ping() -> HttpResponse {
     println!("Ping request received!");
-    HttpResponse::Ok().json(json!({
-        "status": "ok",
-        "message": "bien reçu"
-    }))
+    HttpResponse::Ok().json(HttpSendResponse {
+        status: "ok".to_string(),
+        message: "bien reçu".to_string(),
+    })
 }
 
 // Placer la fonction main avant run_server
