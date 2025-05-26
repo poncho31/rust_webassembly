@@ -1,30 +1,29 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>WebAssembly + Rust</title>
-    <style>
-        .user-item {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-    </style>
-    <script type="module">
+    <head>
+        <meta charset="UTF-8">
+        <title>WebAssembly + Rust</title>
+        <style>
+            .user-item {
+                margin: 10px 0;
+                padding: 10px;
+                border: 1px solid #ccc;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Utilisateurs</h1>
+        <form id="form">
+            <input id="name" placeholder="Name" required />
+            <input id="email" placeholder="Email" required type="email" />
+            <button type="submit">Add User</button>
+        </form>
+        <div id="users"></div>
 
+        <script type="module">
+            import init from "/pkg/client.js";
+            init();
+        </script>
         
-        import init from "/pkg/client.js";
-
-        init();
-    </script>
-</head>
-<body>
-    <h1>Utilisateurs</h1>
-    <form id="form">
-        <input id="name" placeholder="Name" required />
-        <input id="email" placeholder="Email" required type="email" />
-        <button type="submit">Add User</button>
-    </form>
-    <div id="users"></div>
-</body>
+    </body>
 </html>

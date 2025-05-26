@@ -8,6 +8,7 @@ use dotenv::dotenv;
 use std::env;
 use uuid::Uuid;
 use actix_cors::Cors;
+use serde_json::json; 
 
 #[derive(Deserialize)]
 struct CreateUser {
@@ -172,6 +173,14 @@ async fn add_user(
     }
 }
 
+#[get("/ping")]
+async fn ping() -> HttpResponse {
+    println!("Ping request received!");
+    HttpResponse::Ok().json(json!({
+        "status": "ok",
+        "message": "bien reçu"
+    }))
+}
 
 // Placer la fonction main avant run_server
 #[actix_web::main]
@@ -221,6 +230,7 @@ pub async fn run_server() -> std::io::Result<()> {
                     .service(web::scope("/api")
                         .service(list_users)
                         .service(add_user)
+                        .service(ping)  // Ajouter le service ping ici
                     )
                     .service(
                         Files::new("/pkg", &pkg_path)

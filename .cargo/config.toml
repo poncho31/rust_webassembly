@@ -1,3 +1,2 @@
 [alias]
 master = "run -- cmd /c _compile_app.bat"
-wasm='cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"'
