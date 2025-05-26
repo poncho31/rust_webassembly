@@ -1,6 +1,6 @@
 mod client_request;
 
-use core::{User, http_responses::HttpSendResponse};
+use core::{User, http_models::http_responses::HttpSendResponse};
 use wasm_bindgen::prelude::*;
 use web_sys::{window, Document, HtmlInputElement, Event};
 use serde_json::json;
@@ -28,7 +28,7 @@ async fn create_user(name: String, email: String) -> Result<(), JsValue> {
 
 async fn ping_server() {
     match fetch_json::<HttpSendResponse>(&format!("{}/ping", API_BASE_URL)).await {
-        Ok(response) => log(&format!("{} - {}", response.status, response.message)),
+        Ok(response) => log(&format!("{} - {}", response.status, response.message.unwrap_or_default())),
         Err(e)       => log(&format!("Failed to ping server: {:?}", e)),
     }
 }

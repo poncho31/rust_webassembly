@@ -1,6 +1,6 @@
 use actix_files::Files;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, error::ErrorInternalServerError};
-use core::{User, http_responses::HttpSendResponse};
+use core::{User, http_models::http_responses::HttpSendResponse};
 use serde::{Serialize, Deserialize};
 use sqlx::{postgres::PgPoolOptions, PgPool, Pool, Postgres, Row};
 use anyhow::Error;
@@ -176,8 +176,9 @@ async fn add_user(
 async fn ping() -> HttpResponse {
     println!("Ping request received!");
     HttpResponse::Ok().json(HttpSendResponse {
-        status: "ok".to_string(),
-        message: "bien reçu".to_string(),
+        status: 200,
+        message: Some("bien reçu".to_string()),
+        data: None,
     })
 }
 
