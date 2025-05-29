@@ -188,15 +188,20 @@ pub async fn sleep(ms: u32) {
 pub async fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<HttpSendResponse, JsValue> {
     let opts = web_sys::RequestInit::new();
     opts.set_method("POST");
+    opts.set_mode(RequestMode::Cors);
     
     let form_data_js: JsValue = form_data.clone().into();
-    opts.set_body(&form_data_js);
+    opts.set_body(&form_data_js);  // Modification ici : on passe directement la référence
 
     let request = Request::new_with_str_and_init(endpoint, &opts)?;
-
+    
     let window = web_sys::window().unwrap();
     let response = JsFuture::from(window.fetch_with_request(&request)).await?;
     let response: web_sys::Response = response.dyn_into()?;
+    
+    if !response.ok() {
+        return Err(JsValue::from_str(&format!("HTTP error! status: {}", response.status())));
+    }
     
     let json = JsFuture::from(response.json()?).await?;
     let response_data: HttpSendResponse = serde_wasm_bindgen::from_value(json)?;

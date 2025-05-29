@@ -42,45 +42,65 @@ pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)
 
     let fields_clone = fields.clone();
     let endpoint = endpoint.to_string();
+
+
+    
     // Fonction asynchrone pour gérer la soumission du formulaire
     let closure = Closure::wrap(Box::new(move |e: Event| {
         e.prevent_default();
+        let endpoint = endpoint.clone();
+        let fields = fields_clone.clone();
         
-        let form_data = FormData::new().unwrap();
-        let mut debug_data = json!({});  // Pour le logging
+        wasm_bindgen_futures::spawn_local(async move {
+            // Fomr data initialization
+            let form_data      = FormData::new().unwrap();
+            let mut debug_data = json!({});
 
-        for field in fields_clone.iter() {
-            match field.field_type {
-                FieldType::Text => {
-                    let value = field.input.value();
-                    form_data.append_with_str(&field.id, &value).unwrap();
-                    debug_data[&field.id] = Value::String(value);
-                }
-                FieldType::File => {
-                    if let Some(files) = field.input.files() {
-                        let mut files_info = Vec::new();
-                        for i in 0..files.length() {
-                            if let Some(file) = files.item(i) {
-                                form_data.append_with_blob(&field.id, &file).unwrap();
-                                files_info.push(format!("{}({} bytes)", file.name(), file.size()));
+            for field in fields.iter() {
+                match field.field_type {
+                    FieldType::Text => {
+                        let value = field.input.value();
+                        form_data.append_with_str(&field.id, &value).unwrap();
+                        debug_data[&field.id] = Value::String(value);
+                    }
+                    FieldType::File => {
+                        if let Some(files) = field.input.files() {
+                            let mut files_info = Vec::new();
+                            for i in 0..files.length() {
+                                if let Some(file) = files.item(i) {
+                                    form_data.append_with_blob(&field.id, &file).unwrap();
+                                    files_info.push(format!("{}({} bytes)", file.name(), file.size()));
+                                }
                             }
+                            debug_data[&field.id] = json!(files_info);
                         }
-                        debug_data[&field.id] = json!(files_info);
                     }
                 }
             }
-        }
 
-        // Log détaillé des données du formulaire
-        log("=== Client Form Data ===");
-        log(&format!("Endpoint: {}", endpoint));
-        log(&format!("Content: {}", debug_data.to_string()));
-        log("===============");
+            log("=== Client Form Data ===");
+            log(&format!("Endpoint: {}", endpoint));
+            log(&format!("Content: {}", debug_data.to_string()));
+            log("===============");
 
-        let _response_data = client_request::post_form(&endpoint, &form_data);
-
-        log("=== Server Form Data ===");
-
+            // Serveur request
+            match client_request::post_form(&endpoint, &form_data).await {
+                Ok(response) => {
+                    log("=== Server Response ===");
+                    if response.is_success() {
+                        log("✓ Success");
+                        if let Some(data) = response.get_data::<serde_json::Value>() {
+                            log(&format!("Typed data: {:?}", data));
+                        }
+                    } else {
+                        log("⨯ Error");
+                    }
+                    log(&format!("Message: {}", response.get_message()));
+                    log("====================");
+                },
+                Err(e) => log(&format!("Error: {:?}", e)),
+            }
+        });
     }) as Box<dyn FnMut(_)>);
 
     form.add_event_listener_with_callback("submit", closure.as_ref().unchecked_ref())?;

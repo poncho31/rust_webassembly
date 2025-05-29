@@ -56,7 +56,7 @@ pub fn run() -> Result<(), JsValue> {
 
     // Ping server
     log("# Ping server every 5 seconds");
-    wasm_bindgen_futures::spawn_local(ping_server(5));
+    wasm_bindgen_futures::spawn_local(ping_server(100));
 
     // Form init
     log("# Send form initialization");

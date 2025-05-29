@@ -4,9 +4,9 @@ use dotenv::dotenv;
 use std::env;
 use actix_cors::Cors;
 
-mod routes;
-use crate::routes::ping_route;
-use crate::routes::form_route;
+mod controllers;
+use crate::controllers::ping_controller;
+use crate::controllers::form_controller;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -38,8 +38,8 @@ async fn main() -> std::io::Result<()> {
             */
             .service(
                 web::scope("/api")
-                    .route("/ping", web::get().to(ping_route::get))
-                    .route("/form", web::post().to(form_route::post))
+                    .route("/ping", web::get().to(ping_controller::get))
+                    .route("/form", web::post().to(form_controller::post))
             )
 
             /*
