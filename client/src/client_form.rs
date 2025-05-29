@@ -2,6 +2,7 @@ use web_sys::{window, HtmlInputElement, Event, Document, Element, Window, FormDa
 use wasm_bindgen::prelude::*;
 use crate::client_tools::log;
 use crate::client_request;
+use crate::modal::Modal;
 use serde_json::{Value, json};
 
 #[derive(Clone)]
@@ -41,15 +42,15 @@ pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)
     }
 
     let fields_clone = fields.clone();
-    let endpoint = endpoint.to_string();
+    let endpoint     = endpoint.to_string();
+    let modal        = Modal::new()?;
 
-
-    
     // Fonction asynchrone pour gérer la soumission du formulaire
     let closure = Closure::wrap(Box::new(move |e: Event| {
         e.prevent_default();
         let endpoint = endpoint.clone();
         let fields = fields_clone.clone();
+        let modal = modal.clone();
         
         wasm_bindgen_futures::spawn_local(async move {
             // Fomr data initialization
@@ -86,20 +87,15 @@ pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)
             // Serveur request
             match client_request::post_form(&endpoint, &form_data).await {
                 Ok(response) => {
-                    log("=== Server Response ===");
                     if response.is_success() {
-                        log("✓ Success");
-                        if let Some(data) = response.get_data::<serde_json::Value>() {
-                            log(&format!("Typed data: {:?}", data));
-                        }
+                        modal.show("✓ Opération réussie").unwrap();
                     } else {
-                        log("⨯ Error");
+                        modal.show(&format!("⨯ Erreur: {}", response.get_message())).unwrap();
                     }
-                    log(&format!("Message: {}", response.get_message()));
-                    log("====================");
                 },
-                Err(e) => log(&format!("Error: {:?}", e)),
+                Err(e) => modal.show(&format!("⨯ Erreur: {:?}", e)).unwrap(),
             }
+            // Suppression du code de timeout ici
         });
     }) as Box<dyn FnMut(_)>);
 

@@ -2,6 +2,7 @@ mod client_tools;
 mod client_request;
 mod client_periodics;
 mod client_form;
+pub mod modal;
 
 use core::{http_models::http_responses::HttpSendResponse};
 use wasm_bindgen::prelude::*;
@@ -58,8 +59,8 @@ pub fn run() -> Result<(), JsValue> {
     log("# Ping server every 5 seconds");
     wasm_bindgen_futures::spawn_local(ping_server(100));
 
-    // Form init
-    log("# Send form initialization");
+    // Form init : intialise le formulaire du code html static
+    log("# Form initialization");
     form_init("form", "/api/form",&[
         ("login",     FieldType::Text),
         ("birthday",  FieldType::Text),
@@ -73,7 +74,7 @@ pub fn run() -> Result<(), JsValue> {
 
 
 
-    // form_init("button", &[("button", FieldType::Text)])?;
+    // form_init("button", "/api/ping",&[("button", FieldType::Text)])?; // TODO !!!
 
     log("# End script");
     Ok(())
