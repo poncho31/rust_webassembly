@@ -1,6 +1,7 @@
 const translations = {
     fr: {
         login: "Identifiant",
+        birthday : "Date de naissance",
         firstname: "Prénom",
         lastname: "Nom",
         age: "Âge",
@@ -15,6 +16,7 @@ const translations = {
     },
     en: {
         login: "Login",
+        birthday: "Birthday",
         firstname: "Firstname",
         lastname: "Lastname",
         age: "Age",

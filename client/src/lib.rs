@@ -62,12 +62,16 @@ pub fn run() -> Result<(), JsValue> {
     log("# Send form initialization");
     form_init("form", "/api/form",&[
         ("login",     FieldType::Text),
+        ("birthday",  FieldType::Text),
         ("firstname", FieldType::Text),
         ("lastname",  FieldType::Text),
         ("email",     FieldType::Text),
         ("files",     FieldType::File),
         ("age",       FieldType::Text),
     ])?;
+
+
+
 
     // form_init("button", &[("button", FieldType::Text)])?;
 

@@ -21,7 +21,7 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
         
         // Extract field name and filename from content disposition
         let field_name = field.content_disposition().get_name().map(|s| s.to_owned());
-        let filename = field.content_disposition().get_filename().map(|s| s.to_owned());
+        let filename   = field.content_disposition().get_filename().map(|s| s.to_owned());
         
         match (field_name, filename) {
             // Handle file upload fields (has both name and filename)

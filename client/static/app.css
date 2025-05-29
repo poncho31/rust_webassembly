@@ -40,12 +40,17 @@ body {
 }
 
 .form-container div {
-    flex: 1 1 calc(25% - 1rem);
+    flex: 1 1 calc(20% - 1rem);
     min-width: 250px;
 }
 
 .field {
     margin-bottom: 0.75rem;
+    border : 1px solid #dbdbdb;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: #f5f5f5;
+    color: #363636;
 }
 
 label {
@@ -53,10 +58,11 @@ label {
     display: block;
     font-size: 0.875rem;
     font-weight: 700;
-    margin-bottom: 0.5rem;
+    margin: 5px;
 }
 
 input[type="text"],
+input[type="date"],
 input[type="email"],
 input[type="file"] {
     width: 100%;
@@ -68,6 +74,7 @@ input[type="file"] {
     height: 2.5em;
 }
 
+input[type="date"]:focus,
 input[type="text"]:focus,
 input[type="email"]:focus {
     border-color: #485fc7;
@@ -101,6 +108,14 @@ button[type="submit"]:hover {
 
 button[type="submit"]:active {
     background-color: #364aa1;
+}
+
+.form-title {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #ddd;
 }
 
 /* Vos styles personnalisés ici */
