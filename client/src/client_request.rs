@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, window, File, FormData};
 use serde::{Serialize, Deserialize};
+use core::http_models::http_responses::HttpSendResponse;
 
 #[allow(dead_code)]
 #[derive(Default)]
@@ -184,7 +185,7 @@ pub async fn sleep(ms: u32) {
     JsFuture::from(promise).await.unwrap();
 }
 
-pub fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<JsFuture, JsValue> {
+pub async fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<HttpSendResponse, JsValue> {
     let opts = web_sys::RequestInit::new();
     opts.set_method("POST");
     
@@ -194,6 +195,10 @@ pub fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<JsFutu
     let request = Request::new_with_str_and_init(endpoint, &opts)?;
 
     let window = web_sys::window().unwrap();
-    let promise = window.fetch_with_request(&request);
-    Ok(JsFuture::from(promise))
+    let response = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let response: web_sys::Response = response.dyn_into()?;
+    
+    let json = JsFuture::from(response.json()?).await?;
+    let response_data: HttpSendResponse = serde_wasm_bindgen::from_value(json)?;
+    Ok(response_data)
 }

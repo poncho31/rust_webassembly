@@ -11,21 +11,96 @@ body {
     padding: 20px;
 }
 
-
 .server-info {
     margin: 20px;
     padding: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
+
 .form-container {
     margin: 20px;
+    padding: 1.5rem;
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
 }
-.status-box {
-    display: inline-block;
-    padding: 5px 10px;
+
+.form-container h2 {
+    color: #363636;
+    margin-bottom: 1.5rem;
+}
+
+.form-container form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    position: relative;
+    padding-bottom: 4rem;  /* Espace pour le bouton */
+}
+
+.form-container div {
+    flex: 1 1 calc(25% - 1rem);
+    min-width: 250px;
+}
+
+.field {
+    margin-bottom: 0.75rem;
+}
+
+label {
+    color: #363636;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="file"] {
+    width: 100%;
+    padding: calc(0.5em - 1px) calc(0.75em - 1px);
+    background-color: white;
+    border: 1px solid #dbdbdb;
     border-radius: 4px;
-    margin-right: 10px;
+    color: #363636;
+    height: 2.5em;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus {
+    border-color: #485fc7;
+    box-shadow: 0 0 0 0.125em rgba(72, 95, 199, 0.25);
+    outline: none;
+}
+
+button[type="submit"] {
+    background-color: #485fc7;
+    border-color: transparent;
+    color: #fff;
+    padding: calc(0.5em - 1px) 1em;
+    border-radius: 4px;
+    font-size: 1rem;
+    height: 2.5em;
+    line-height: 1.5;
+    cursor: pointer;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    margin-top: 1rem;
+    width: 20%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+
+button[type="submit"]:hover {
+    background-color: #3e54b4;
+}
+
+button[type="submit"]:active {
+    background-color: #364aa1;
 }
 
 /* Vos styles personnalisés ici */

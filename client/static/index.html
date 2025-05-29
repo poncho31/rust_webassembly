@@ -1,56 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>WebAssembly App</title>
+        <title>Rust WebAssembly Single Page App</title>
         <link rel="stylesheet" href="/app.css">
     </head>
     <body>
-        <div class="server-info">
-            <h2>Server Status</h2>
-            <div>
-                Status: <span class="status-box" id="server-status">Checking...</span>
-                Message: <span id="server-message">Connecting to server...</span>
-            </div>
-        </div>
-
         <div class="form-container">
-            <h2>Contact Form</h2>
             <form id="form">
-                <div>
-                    <label for="name">Login:</label>
-                    <input type="text" id="name" value="Test">
+                <!-- Login -->
+                <div class="field">
+                    <label for="login" data-translate="login"></label>
+                    <input type="text" id="login" value="Test">
                 </div>
-                <div>
-                    <label for="name">Firstname:</label>
+
+                <!-- Firstname -->
+                <div class="field">
+                    <label for="firstname" data-translate="firstname"></label>
                     <input type="text" id="firstname" value="Test">
                 </div>
-                <div>
-                    <label for="name">Lastname:</label>
+
+                <!-- Lastname -->
+                <div class="field">
+                    <label for="lastname" data-translate="lastname"></label>
                     <input type="text" id="lastname" value="Test">
                 </div>
 
-                <div>
-                    <label for="name">Age:</label>
+                <!-- Age -->
+                <div class="field">
+                    <label for="age" data-translate="age"></label>
                     <input type="text" id="age" value="31">
                 </div>
 
-                <div>
-                    <label for="name">File:</label>
-                    <input type="file" id="file" value="Test" multiple>
+                <!-- Files -->
+                <div class="field">
+                    <label for="files" data-translate="file"></label>
+                    <input type="file" id="files" multiple>
                 </div>
 
-                <div>
-                    <label for="email">Email:</label>
+                <!-- Email -->
+                <div class="field">
+                    <label for="email" data-translate="email"></label>
                     <input type="email" id="email" value="Test@test.test">
                 </div>
-                <button type="submit">Submit</button>
+
+                <!-- Submit -->
+                <button type="submit" data-translate="submit"></button>
             </form>
         </div>
 
+
+        <div class="server-info">
+            <h2 data-translate="serverStatus">Server Status</h2>
+            <div>
+                <span data-translate="status">Status:</span> 
+                <span class="status-box" id="server-status" data-translate="checking">Checking...</span>
+                <span data-translate="message">Message:</span> 
+                <span id="server-message" data-translate="connecting">Connecting to server...</span>
+            </div>
+        </div>
+
+
         <script type="module">
+            import { translate } from '/translations.js';
             import init from "/pkg/client.js";
+
+            // Traduire tous les éléments avec data-translate
+            document.querySelectorAll('[data-translate]').forEach(element => {
+                const key = element.getAttribute('data-translate');
+                element.textContent = translate(key);
+            });
+
             init();
         </script>
         

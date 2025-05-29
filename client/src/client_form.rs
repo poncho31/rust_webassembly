@@ -13,9 +13,9 @@ pub enum FieldType {
 /// Structure représentant un champ de formulaire
 #[derive(Clone)]
 pub struct FormField {
-    id: String,
-    field_type: FieldType,
-    input: HtmlInputElement,
+    id         : String,
+    field_type : FieldType,
+    input      : HtmlInputElement,
 }
 
 pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)]) -> Result<(), JsValue> {
@@ -72,12 +72,15 @@ pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)
         }
 
         // Log détaillé des données du formulaire
-        log("=== Form Data ===");
+        log("=== Client Form Data ===");
         log(&format!("Endpoint: {}", endpoint));
         log(&format!("Content: {}", debug_data.to_string()));
         log("===============");
 
-        let _ = client_request::post_form(&endpoint, &form_data);
+        let _response_data = client_request::post_form(&endpoint, &form_data);
+
+        log("=== Server Form Data ===");
+
     }) as Box<dyn FnMut(_)>);
 
     form.add_event_listener_with_callback("submit", closure.as_ref().unchecked_ref())?;
