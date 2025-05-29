@@ -5,8 +5,8 @@ use std::env;
 use actix_cors::Cors;
 
 mod routes;
-mod route;
 use crate::routes::ping_route;
+use crate::routes::form_route;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -39,8 +39,27 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(actix_web::middleware::Logger::default())
             .wrap(cors)
-            // .configure(configure_routes)
-            .service(web::scope("/api").service(ping_route::get))
+
+            /*
+            *  ██████   ██████  ██  ██ ████████ ███████  ███████
+            *  ██   ██ ██    ██ ██  ██    ██    ██       ██
+            *  ██████  ██    ██ ██  ██    ██    █████    ███████
+            *  ██   ██ ██    ██ ██  ██    ██    ██            ██
+            *  ██   ██  ██████   ████     ██    ███████  ███████
+            */
+            .service(
+                web::scope("/api")
+                    .route("/ping", web::get().to(ping_route::get))
+                    .route("/form", web::post().to(form_route::post))
+            )
+
+            /*
+             *  ███████ ████████  █████  ████████ ██  ██████  ███████
+             *  ██         ██    ██   ██    ██    ██ ██       ██
+             *  ███████    ██    ███████    ██    ██ ██       ███████
+             *       ██    ██    ██   ██    ██    ██ ██            ██
+             *  ███████    ██    ██   ██    ██    ██  ██████  ███████
+             */
             .service(Files::new("/pkg", &pkg_path).show_files_listing())
             .service(Files::new("/", &static_path).index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string())))
             .default_service(web::route().to(|| async {

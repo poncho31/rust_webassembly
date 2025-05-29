@@ -183,3 +183,17 @@ pub async fn sleep(ms: u32) {
     });
     JsFuture::from(promise).await.unwrap();
 }
+
+pub fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<JsFuture, JsValue> {
+    let opts = web_sys::RequestInit::new();
+    opts.set_method("POST");
+    
+    let form_data_js: JsValue = form_data.clone().into();
+    opts.set_body(&form_data_js);
+
+    let request = Request::new_with_str_and_init(endpoint, &opts)?;
+
+    let window = web_sys::window().unwrap();
+    let promise = window.fetch_with_request(&request);
+    Ok(JsFuture::from(promise))
+}

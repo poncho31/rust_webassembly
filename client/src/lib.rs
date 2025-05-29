@@ -60,12 +60,14 @@ pub fn run() -> Result<(), JsValue> {
 
     // Form init
     log("# Send form initialization");
-    form_init("form", &[
+    form_init("form", "/api/form",&[
         ("name", FieldType::Text),
         ("email", FieldType::Text),
         ("file", FieldType::File),
         ("age", FieldType::Text),
     ])?;
+
+    // form_init("button", &[("button", FieldType::Text)])?;
 
     log("# End script");
     Ok(())

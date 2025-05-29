@@ -1,7 +1,7 @@
 use actix_web::HttpResponse;
 use core::{User, HttpSendResponse};
 
-pub async fn get() -> HttpResponse {
+pub async fn post() -> HttpResponse {
     println!("Ping request received!");
     
     let user = User::new(

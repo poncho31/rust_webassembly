@@ -1,7 +1,8 @@
-use web_sys::{window, HtmlInputElement, Event, Document, Element, Window, File, FileList};
+use web_sys::{window, HtmlInputElement, Event, Document, Element, Window, FormData};
 use wasm_bindgen::prelude::*;
 use crate::client_tools::log;
-use crate::wasm_bindgen;
+use crate::client_request;
+use serde_json::{Value, json};
 
 #[derive(Clone)]
 pub enum FieldType {
@@ -17,7 +18,7 @@ pub struct FormField {
     input: HtmlInputElement,
 }
 
-pub fn form_init(form_id: &str, field_specs: &[(&str, FieldType)]) -> Result<(), JsValue> {
+pub fn form_init(form_id: &str, endpoint: &str, field_specs: &[(&str, FieldType)]) -> Result<(), JsValue> {
     log("#### Debut script send form");
 
     let window  : Window   = window().unwrap();
@@ -40,42 +41,44 @@ pub fn form_init(form_id: &str, field_specs: &[(&str, FieldType)]) -> Result<(),
     }
 
     let fields_clone = fields.clone();
+    let endpoint = endpoint.to_string();
     // Fonction asynchrone pour gérer la soumission du formulaire
     let closure = Closure::wrap(Box::new(move |e: Event| {
         e.prevent_default();
         
-        let mut log_parts = Vec::new();
+        let form_data = FormData::new().unwrap();
+        let mut debug_data = json!({});  // Pour le logging
+
         for field in fields_clone.iter() {
             match field.field_type {
                 FieldType::Text => {
-                    log_parts.push(format!("{}: {}", field.id, field.input.value()));
+                    let value = field.input.value();
+                    form_data.append_with_str(&field.id, &value).unwrap();
+                    debug_data[&field.id] = Value::String(value);
                 }
                 FieldType::File => {
                     if let Some(files) = field.input.files() {
                         let mut files_info = Vec::new();
-                        let length = files.length();
-                        for i in 0..length {
+                        for i in 0..files.length() {
                             if let Some(file) = files.item(i) {
-                                files_info.push(format!("{}({} bytes)", 
-                                    file.name(),
-                                    file.size()
-                                ));
+                                form_data.append_with_blob(&field.id, &file).unwrap();
+                                files_info.push(format!("{}({} bytes)", file.name(), file.size()));
                             }
                         }
-                        if !files_info.is_empty() {
-                            log_parts.push(format!("{}: [{}]", 
-                                field.id,
-                                files_info.join(", ")
-                            ));
-                        }
+                        debug_data[&field.id] = json!(files_info);
                     }
                 }
             }
         }
-        log(&format!("Form submitted with {}", log_parts.join(", ")));
+
+        // Log détaillé des données du formulaire
+        log("=== Form Data ===");
+        log(&format!("Endpoint: {}", endpoint));
+        log(&format!("Content: {}", debug_data.to_string()));
+        log("===============");
+
+        let _ = client_request::post_form(&endpoint, &form_data);
     }) as Box<dyn FnMut(_)>);
-
-
 
     form.add_event_listener_with_callback("submit", closure.as_ref().unchecked_ref())?;
     closure.forget();
