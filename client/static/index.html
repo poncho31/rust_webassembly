@@ -1,24 +1,50 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>WebAssembly + Rust</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WebAssembly App</title>
         <style>
-            .user-item {
-                margin: 10px 0;
-                padding: 10px;
+            .server-info {
+                margin: 20px;
+                padding: 15px;
                 border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .form-container {
+                margin: 20px;
+            }
+            .status-box {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 4px;
+                margin-right: 10px;
             }
         </style>
     </head>
     <body>
-        <h1>Utilisateurs</h1>
-        <form id="form">
-            <input id="name" placeholder="Name" required />
-            <input id="email" placeholder="Email" required type="email" />
-            <button type="submit">Add User</button>
-        </form>
-        <div id="users"></div>
+        <div class="server-info">
+            <h2>Server Status</h2>
+            <div>
+                Status: <span class="status-box" id="server-status">Checking...</span>
+                Message: <span id="server-message">Connecting to server...</span>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <h2>Contact Form</h2>
+            <form id="form">
+                <div>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div>
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <button type="submit">Submit</button>
+            </form>
+        </div>
 
         <script type="module">
             import init from "/pkg/client.js";

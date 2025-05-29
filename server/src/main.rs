@@ -6,7 +6,6 @@ use actix_cors::Cors;
 
 mod routes;
 mod route;
-use route::configure_routes;
 use crate::routes::ping_route;
 
 #[actix_web::main]
