@@ -1,5 +1,9 @@
+use std::fs;
+use std::path::Path;
 use actix_multipart::Field;
 use futures::StreamExt;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 use std::collections::HashMap;
 
 pub async fn extract_file_info(field: &mut Field) -> String {
@@ -32,4 +36,30 @@ pub async fn extract_form_field(field: &mut Field) -> (String, String) {
         }
     }
     (name, value)
+}
+
+pub async fn save_uploaded_file(field: &mut Field, filename: &str) -> Result<String, std::io::Error> {
+    // Créer le dossier Storage/form s'il n'existe pas
+    let upload_dir = Path::new("Storage/files");
+    fs::create_dir_all(upload_dir)?;
+
+    // Construire le chemin complet du fichier
+    let file_path = upload_dir.join(filename);
+    
+    // Créer le fichier
+    let mut file = File::create(&file_path).await?;
+    
+    // Lire le contenu du champ et écrire dans le fichier
+    while let Some(chunk) = field.next().await {
+        let data = chunk
+            .map_err(|e| std::io::Error::new(
+                std::io::ErrorKind::Other, 
+                e.to_string()  // Convertir l'erreur en String pour être thread-safe
+            ))?;
+        file.write_all(&data).await?;
+    }
+
+    // Retourner la taille du fichier
+    let metadata = file_path.metadata()?;
+    Ok(format!("Saved {} bytes", metadata.len()))
 }

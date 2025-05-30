@@ -4,9 +4,10 @@ use actix_multipart::Multipart;
 use futures::StreamExt;
 use core::HttpSendResponse;
 use std::collections::HashMap;
-use server::extract_form::{extract_file_info, extract_form_field};
+use server::extract_form::{extract_file_info, extract_form_field, save_uploaded_file};  // Added save_uploaded_file
 use server::models::form_response::FormResponse;
 use serde_json::to_value;
+use tokio::time::{sleep, Duration};  // Add this import at the top
 
 /// Handles POST requests with multipart form data
 /// Processes both file uploads and form fields
@@ -25,8 +26,15 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
         
         match (field_name, filename) {
             // Handle file upload fields (has both name and filename)
-            (Some(_), Some(_)) => {
-                files_info.push(extract_file_info(&mut field).await);
+            (Some(name), Some(filename)) => {
+                match save_uploaded_file(&mut field, &filename).await {
+                    Ok(save_info) => {
+                        files_info.push(format!("{} ({})", filename, save_info));
+                    },
+                    Err(e) => {
+                        files_info.push(format!("Error saving {}: {}", filename, e));
+                    }
+                }
             },
             // Handle regular form fields (has name but no filename)
             (Some(_), None) => {
@@ -50,6 +58,9 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
     // Then convert form_response to serde_json::Value
     let data = to_value(form_response).unwrap();
 
+    // Add 500ms delay
+    sleep(Duration::from_millis(500)).await;
+    
     // Return successful response with status, message and processed data
     Ok(HttpResponse::Ok().json(HttpSendResponse {
         status: 200,

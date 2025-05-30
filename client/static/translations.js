@@ -12,7 +12,9 @@ const translations = {
         status: "Statut",
         message: "Message",
         checking: "Vérification...",
-        connecting: "Connexion au serveur..."
+        connecting: "Connexion au serveur...",
+        no_file_chosen: "Aucun fichier choisi",
+        files: "Fichiers",
     },
     en: {
         login: "Login",
@@ -27,7 +29,9 @@ const translations = {
         status: "Status",
         message: "Message",
         checking: "Checking...",
-        connecting: "Connecting to server..."
+        connecting: "Connecting to server...",
+        no_file_chosen: "No file chosen",
+        files: "Files",
     }
 };
 

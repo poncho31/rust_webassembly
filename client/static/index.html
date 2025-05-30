@@ -43,8 +43,13 @@
 
                     <!-- Files -->
                     <div class="field">
-                        <label for="files" data-translate="file"></label>
-                        <input type="file" id="files" multiple>
+                        <label for="files" data-translate="files"></label>
+                        <div class="file">
+                            <label class="file-label">
+                                <input type="file" id="files" multiple>
+                                <span class="file-name" data-translate="no_file_chosen"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Email -->

@@ -159,3 +159,65 @@ form {
 button[type="submit"] .loader {
     display: inline-block;
 }
+
+/* File input styling */
+.file {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+}
+
+input[type="file"] {
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.file-label {
+    display: inline-flex;
+    align-items: center;
+    width: 100%;
+    background-color: white;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
+    height: 2.5em;
+    padding: calc(0.5em - 1px) calc(0.75em - 1px);
+    cursor: pointer;
+    color: #4a4a4a;
+}
+
+.file-label::after {
+    content: "Browse";
+    background-color: #485fc7;
+    color: white;
+    padding: 0 1em;
+    height: 2.5em;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 0 4px 4px 0;
+    margin: calc(-0.5em - 1px) calc(-0.75em - 1px);
+    margin-left: 1em;
+}
+
+.file-label:hover::after {
+    background-color: #3e54b4;
+}
+
+.file:active .file-label::after {
+    background-color: #364aa1;
+}
+
+/* File name display */
+.file-name {
+    max-width: calc(100% - 100px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
