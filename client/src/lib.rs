@@ -17,19 +17,19 @@ const API_BASE_URL: &str = "api";
 /// Met à jour l'interface utilisateur avec le statut du serveur et le message
 /// - status: Le statut à afficher (OK, Error, etc.)
 /// - message: Le message détaillé à afficher
-// fn update_status_display(status: &str, message: &str) {
-//     let window = window().unwrap();
-//     let document = window.document().unwrap();
-    
-//     // Met à jour l'élément affichant le statut
-//     if let Some(status_el) = document.get_element_by_id("server-status") {
-//         status_el.set_text_content(Some(status));
-//     }
-//     // Met à jour l'élément affichant le message
-//     if let Some(message_el) = document.get_element_by_id("server-message") {
-//         message_el.set_text_content(Some(message));
-//     }
-// }
+fn update_status_display(status: &str, message: &str) {
+    let window = window().unwrap();
+    let document = window.document().unwrap();
+ 
+    // Met à jour l'élément affichant le statut
+    if let Some(status_el) = document.get_element_by_id("server-status") {
+        status_el.set_text_content(Some(status));
+    }
+    // Met à jour l'élément affichant le message
+    if let Some(message_el) = document.get_element_by_id("server-message") {
+        message_el.set_text_content(Some(message));
+    }
+}
 
 /// Ping_server utilisant run_async_request
 async fn ping_server(interval_seconds: i32) {
@@ -38,10 +38,12 @@ async fn ping_server(interval_seconds: i32) {
             Ok(response) => {
                 let message = response.message.unwrap_or_default();
                 let status = response.status.to_string();
+                update_status_display(&status, &message);
                 log(&format!("Ping response: status={}, message={}", status, message));
             },
             Err(e) => {
                 let error_msg = format!("Failed to ping server: {:?}", e);
+                update_status_display("Error", &error_msg);
                 log(&error_msg);
             },
         }

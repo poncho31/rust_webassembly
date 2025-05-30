@@ -60,23 +60,29 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
 
 
 pub fn create_response_message(form_data: &HashMap<String, String>, files_info: &Vec<String>) -> String {
-    let fields_list = if form_data.is_empty() {
-        "no fields".to_string()
+    let fields_html = if form_data.is_empty() {
+        "<tr><td>Fields</td><td>No fields</td></tr>".to_string()
     } else {
-        form_data.keys()
-            .map(|k| k.as_str())
-            .collect::<Vec<&str>>()
-            .join(", ")
+        form_data.iter()
+            .map(|(key, value)| format!("<tr><td>{}</td><td>{}</td></tr>", key, value))
+            .collect::<Vec<String>>()
+            .join("\n")
     };
 
-    let files_list = if files_info.is_empty() {
-        "no files".to_string()
+    let files_html = if files_info.is_empty() {
+        "<tr><td>Files</td><td>No files</td></tr>".to_string()
     } else {
-        files_info.join(", ")
+        format!("<tr><td>Files</td><td>{}</td></tr>",
+            files_info.iter()
+                .map(|file| file.to_string())
+                .collect::<Vec<String>>()
+                .join("<br>")
+        )
     };
 
-    format!("Form processed with fields: [{}] and files: [{}]", 
-        fields_list,
-        files_list
+    format!(
+        "<table class='response-table'><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>{}{}</tbody></table>",
+        fields_html,
+        files_html
     )
 }
