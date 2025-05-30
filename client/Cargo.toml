@@ -33,7 +33,8 @@ web-sys              = { version = "0.3.77", features = [
   "console",
   "MessageEvent",
   "DomStringMap",
-  "ConsoleLogLevel"
+  "ConsoleLogLevel",
+  "HtmlButtonElement"
 ] }
 serde-wasm-bindgen   = "0.5"
 serde_json           = "1.0"
@@ -45,3 +46,6 @@ uuid                 = { version = "1.0", features = ["v4", "js"] }
 version = "0.2.16"
 default-features = false
 features = ["js"]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-O4']  # Niveau d'optimisation maximum

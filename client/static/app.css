@@ -13,6 +13,11 @@ body {
     padding: 20px;
 }
 
+
+form{
+    padding-bottom: 0;
+}
+
 .server-info {
     margin: 20px;
     padding: 15px;
@@ -38,7 +43,7 @@ body {
     flex-wrap: wrap;
     gap: 1rem;
     position: relative;
-    padding-bottom: 4rem;  /* Espace pour le bouton */
+    margin-bottom: 0;
 }
 
 .form-container div {
@@ -97,9 +102,7 @@ button[type="submit"] {
     justify-content: center;
     text-align: center;
     white-space: nowrap;
-    margin-top: 1rem;
-    width: 20%;
-    position: absolute;
+    margin-top: 0;
     bottom: 0;
     left: 0;
 }
@@ -118,6 +121,11 @@ button[type="submit"]:active {
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
     border-bottom: 2px solid #ddd;
+}
+
+form {
+    margin: 0;
+    padding: 0;
 }
 
 /* Vos styles personnalisés ici */

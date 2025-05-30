@@ -33,10 +33,3 @@ pub async fn extract_form_field(field: &mut Field) -> (String, String) {
     }
     (name, value)
 }
-
-pub fn create_response_message(form_data: &HashMap<String, String>, files_info: &Vec<String>) -> String {
-    format!("Form processed with {} fields and {} files", 
-        form_data.len(), 
-        files_info.len()
-    )
-}

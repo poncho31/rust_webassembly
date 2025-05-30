@@ -39,6 +39,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .route("/ping", web::get().to(ping_controller::get))
+                    .route("/ping", web::post().to(ping_controller::get))
                     .route("/form", web::post().to(form_controller::post))
             )
 

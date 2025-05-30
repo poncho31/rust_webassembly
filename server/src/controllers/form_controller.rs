@@ -4,7 +4,7 @@ use actix_multipart::Multipart;
 use futures::StreamExt;
 use core::HttpSendResponse;
 use std::collections::HashMap;
-use server::extract_form::{extract_file_info, extract_form_field, create_response_message};
+use server::extract_form::{extract_file_info, extract_form_field};
 use server::models::form_response::FormResponse;
 use serde_json::to_value;
 
@@ -56,4 +56,27 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
         message: Some(message),
         data: Some(data),
     }))
+}
+
+
+pub fn create_response_message(form_data: &HashMap<String, String>, files_info: &Vec<String>) -> String {
+    let fields_list = if form_data.is_empty() {
+        "no fields".to_string()
+    } else {
+        form_data.keys()
+            .map(|k| k.as_str())
+            .collect::<Vec<&str>>()
+            .join(", ")
+    };
+
+    let files_list = if files_info.is_empty() {
+        "no files".to_string()
+    } else {
+        files_info.join(", ")
+    };
+
+    format!("Form processed with fields: [{}] and files: [{}]", 
+        fields_list,
+        files_list
+    )
 }

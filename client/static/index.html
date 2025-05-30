@@ -10,70 +10,58 @@
         <div class="form-container">
             <h2 class="form-title">Formulaire</h2>
             <form id="form">
-                <!-- Login -->
-                <div class="field">
-                    <label for="login" data-translate="login"></label>
-                    <input type="text" id="login" value="Test">
-                </div>
+                    <!-- Login -->
+                    <div class="field">
+                        <label for="login" data-translate="login"></label>
+                        <input type="text" id="login" value="Test">
+                    </div>
 
-                <!-- Birthday -->
-                <div class="field">
-                    <label for="birthday" data-translate="birthday"></label>
-                    <input type="date" id="birthday" value="1991-05-31">
-                </div>
+                    <!-- Birthday -->
+                    <div class="field">
+                        <label for="birthday" data-translate="birthday"></label>
+                        <input type="date" id="birthday" value="1991-05-31">
+                    </div>
 
 
-                <!-- Firstname -->
-                <div class="field">
-                    <label for="firstname" data-translate="firstname"></label>
-                    <input type="text" id="firstname" value="Test">
-                </div>
+                    <!-- Firstname -->
+                    <div class="field">
+                        <label for="firstname" data-translate="firstname"></label>
+                        <input type="text" id="firstname" value="Test">
+                    </div>
 
-                <!-- Lastname -->
-                <div class="field">
-                    <label for="lastname" data-translate="lastname"></label>
-                    <input type="text" id="lastname" value="Test">
-                </div>
+                    <!-- Lastname -->
+                    <div class="field">
+                        <label for="lastname" data-translate="lastname"></label>
+                        <input type="text" id="lastname" value="Test">
+                    </div>
 
-                <!-- Age -->
-                <div class="field">
-                    <label for="age" data-translate="age"></label>
-                    <input type="text" id="age" value="31">
-                </div>
+                    <!-- Age -->
+                    <div class="field">
+                        <label for="age" data-translate="age"></label>
+                        <input type="text" id="age" value="31">
+                    </div>
 
-                <!-- Files -->
-                <div class="field">
-                    <label for="files" data-translate="file"></label>
-                    <input type="file" id="files" multiple>
-                </div>
+                    <!-- Files -->
+                    <div class="field">
+                        <label for="files" data-translate="file"></label>
+                        <input type="file" id="files" multiple>
+                    </div>
 
-                <!-- Email -->
-                <div class="field">
-                    <label for="email" data-translate="email"></label>
-                    <input type="email" id="email" value="Test@test.test">
-                </div>
-
-                <!-- Submit -->
-                <button type="submit" data-translate="submit"></button>
+                    <!-- Email -->
+                    <div class="field">
+                        <label for="email" data-translate="email"></label>
+                        <input type="email" id="email" value="Test@test.test">
+                    </div>
             </form>
+            <button form="form" type="submit" data-translate="submit"></button>
         </div>
 
-
+        <form id="button_ping">
+            <button  type="submit" form="button_ping" data-translate="ping"></button>
+        </form>
+   
 
         <div class="server-info">
-
-            <!-- Modal structure -->
-            <div class="modal" style="display: none;">
-                <div class="modal-content">
-                    <button class="modal-close">×</button>
-                    <div class="modal-message">dzdzd
-                        <!-- Le contenu du message sera inséré ici dynamiquement -->
-                    </div>
-                </div>
-            </div>
-
-            <form  id="button"><button type="submit" >Ping</button></form>
-
 
             <h2 data-translate="serverStatus">Server Status</h2>
             <div>
