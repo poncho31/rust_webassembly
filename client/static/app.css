@@ -93,10 +93,10 @@ button[type="submit"] {
     background-color: #485fc7;
     border-color: transparent;
     color: #fff;
-    padding: calc(0.5em - 1px) 1em;
+    padding: 0.5em 1em;  /* Padding plus précis */
     border-radius: 4px;
     font-size: 1rem;
-    height: 2.5em;
+    height: 2.25em;      /* Hauteur légèrement réduite */
     line-height: 1.5;
     cursor: pointer;
     justify-content: center;
@@ -105,6 +105,11 @@ button[type="submit"] {
     margin-top: 0;
     bottom: 0;
     left: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    gap: 4px;  /* Réduit l'espace entre le texte et le loader */
 }
 
 button[type="submit"]:hover {
@@ -128,4 +133,28 @@ form {
     padding: 0;
 }
 
-/* Vos styles personnalisés ici */
+/* Reset des styles précédents */
+.loader {
+    display: inline-block;
+    width: 15px !important;  /* Force la largeur à 5px */
+    height: 15px !important; /* Force la hauteur à 5px */
+    min-width: 5px !important; /* Empêche l'héritage de min-width */
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: spin 0.6s linear infinite;
+    margin-left: 8px;
+    flex: none !important; /* Empêche le flex d'étirer le loader */
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Le loader apparaît uniquement quand il est dans un bouton submit */
+button[type="submit"] .loader {
+    display: inline-block;
+}
