@@ -86,15 +86,20 @@
             <h2>🔄 Rafraîchissement Automatique</h2>
             
             <div class="refresh-examples">
+
+                
                 <div class="refresh-card">
                     <h3>🌡️ Température Actuelle</h3>
                     <div class="field">
                         <label for="region">Région:</label>
                         <input type="text" id="region" value="Bruxelles" placeholder="Entrez une ville">
+                        <input type="hidden" id="pays" value="Belgique" placeholder="Pays" disabled>
                     </div>
                     <p>Mise à jour toutes les 30 secondes</p>
                     <div class="refresh-value" id="auto-server-status">En attente...</div>
-                </div><div class="refresh-card">
+                </div>
+                
+                <div class="refresh-card">
                     <h3>Code Statut HTTP</h3>
                     <p>Mise à jour toutes les 10 secondes</p>
                     <div class="refresh-value" id="auto-counter">En attente...</div>
@@ -106,7 +111,10 @@
                     <div class="refresh-value" id="auto-message">En attente...</div>
                 </div>
             </div>
-        </div>        <script type="module">
+        </div>        
+        
+        
+        <script type="module">
             import { translate } from '/translations.js';
             import init from "/pkg/client.js";
 
@@ -115,6 +123,9 @@
                 const key = element.getAttribute('data-translate');
                 element.textContent = translate(key);
             });            // Gérer l'affichage du nom des fichiers choisis
+
+
+
             function setupFileDisplay() {
                 const fileInput = document.getElementById('files');
                 const fileName = document.querySelector('.file-name');

@@ -133,7 +133,10 @@ async fn init_auto_refresh() {
         prefix: Some("🌡️ ".to_string()),
         suffix: Some("°C".to_string()),
         format: Some("number".to_string()),
-    }).with_input_field("#region"); // Utilise le champ région comme paramètre
+    })    
+    .with_input_field("region", "#region")
+    .with_input_field("pays", "#pays")  
+    ; 
 
 
 

@@ -16,17 +16,12 @@ impl RefreshHandler {
         Self { config }
     }    /// Exécuter un rafraîchissement
     pub async fn execute_refresh(&self) {
-        log(&format!("🔄 Refreshing: {}", self.config.id));
-          // Construire l'URL avec les paramètres si un champ input est configuré
-        let url = if let Some(input_selector) = &self.config.input_field_selector {
-            match self.get_input_value(input_selector) {
-                Ok(value) => {
-                    // Simple URL encoding pour les espaces et caractères spéciaux
-                    let encoded_value = value.replace(" ", "%20").replace("é", "%C3%A9").replace("è", "%C3%A8");
-                    format!("{}?region={}", self.config.endpoint, encoded_value)
-                }
+        log(&format!("🔄 Refreshing: {}", self.config.id));        // Construire l'URL avec les paramètres si des champs input sont configurés
+        let url = if !self.config.input_field_selectors.is_empty() {
+            match self.build_url_with_params() {
+                Ok(url) => url,
                 Err(e) => {
-                    log(&format!("⚠️ Failed to get input value: {}", e));
+                    log(&format!("⚠️ Failed to build URL with params: {}", e));
                     self.config.endpoint.clone()
                 }
             }
@@ -51,6 +46,52 @@ impl RefreshHandler {
                 log(&format!("❌ Refresh failed for {}: {:?}", self.config.id, e));
             }
         }
+    }
+
+    /// Construire l'URL avec tous les paramètres des champs input
+    fn build_url_with_params(&self) -> Result<String, String> {
+        let mut params = Vec::new();
+        
+        for (param_name, selector) in &self.config.input_field_selectors {
+            match self.get_input_value(selector) {
+                Ok(value) => {
+                    // Simple URL encoding pour les espaces et caractères spéciaux
+                    let encoded_value = self.url_encode(&value);
+                    params.push(format!("{}={}", param_name, encoded_value));
+                }
+                Err(e) => {
+                    log(&format!("⚠️ Failed to get value for {}: {}", param_name, e));
+                    // Continuer avec les autres paramètres au lieu d'échouer complètement
+                }
+            }
+        }
+        
+        if params.is_empty() {
+            Ok(self.config.endpoint.clone())
+        } else {
+            Ok(format!("{}?{}", self.config.endpoint, params.join("&")))
+        }
+    }
+
+    /// Encoder une valeur pour l'URL
+    fn url_encode(&self, value: &str) -> String {
+        value
+            .replace(" ", "%20")
+            .replace("é", "%C3%A9")
+            .replace("è", "%C3%A8")
+            .replace("à", "%C3%A0")
+            .replace("ç", "%C3%A7")
+            .replace("ê", "%C3%AA")
+            .replace("ë", "%C3%AB")
+            .replace("î", "%C3%AE")
+            .replace("ï", "%C3%AF")
+            .replace("ô", "%C3%B4")
+            .replace("ù", "%C3%B9")
+            .replace("û", "%C3%BB")
+            .replace("ü", "%C3%BC")
+            .replace("ÿ", "%C3%BF")
+            .replace("&", "%26")
+            .replace("=", "%3D")
     }
 
     /// Récupérer la valeur d'un champ input

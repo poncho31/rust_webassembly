@@ -2,14 +2,15 @@ use actix_web::{web, HttpResponse, HttpRequest};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct WeatherQuery {
     pub region: Option<String>,
+    pub pays: Option<String>,
 }
 
 #[derive(Serialize)]
 pub struct WeatherResponse {
-    pub temperature: f32,
+    pub temperature: String,
     pub region: String,
     pub status: u16,
     pub message: String,
@@ -17,8 +18,12 @@ pub struct WeatherResponse {
 
 /// API pour récupérer la température d'une région
 pub async fn get_temperature(query: web::Query<WeatherQuery>, _req: HttpRequest) -> HttpResponse {
-    let region = query.region.clone().unwrap_or_else(|| "Bruxelles".to_string());
+    let region = query.region.clone().unwrap_or_else(|| "not found".to_string());
+    let pays   = query.pays.clone().unwrap_or_else(|| "not found".to_string());
     
+    println!(" query {:?}", query);
+
+
     // Simulation de données météo pour différentes villes
     let weather_data = get_mock_weather_data();
     
@@ -30,10 +35,10 @@ pub async fn get_temperature(query: web::Query<WeatherQuery>, _req: HttpRequest)
         });
 
     let response = WeatherResponse {
-        temperature,
+        temperature : format!("{}°C, {} {}", temperature.to_string(), &pays, &test),
         region: region.clone(),
         status: 200,
-        message: format!("Température actuelle pour {}", region),
+        message: format!("Température actuelle pour {} {}", region , pays),
     };
 
     println!("🌡️ Weather API - Région: {}, Température: {}°C", region, temperature);

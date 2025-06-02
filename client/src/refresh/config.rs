@@ -16,9 +16,9 @@ pub struct RefreshConfig {
     /// Transformation à appliquer aux données
     pub transform: Option<DataTransform>,
     /// Afficher les erreurs dans l'interface
-    pub show_errors: bool,
-    /// Sélecteur d'un champ input dont la valeur sera utilisée comme paramètre
-    pub input_field_selector: Option<String>,
+    pub show_errors: bool,    /// Sélecteurs de champs input dont les valeurs seront utilisées comme paramètres
+    /// Format: (nom_parametre, selecteur_css)
+    pub input_field_selectors: Vec<(String, String)>,
 }
 
 /// Type de contenu à insérer dans l'élément
@@ -57,14 +57,13 @@ impl RefreshConfig {    /// Constructeur simple pour un rafraîchissement de tex
             id: id.to_string(),
             endpoint: endpoint.to_string(),
             interval_seconds,
-            target_selector: target_selector.to_string(),
-            content_type: ContentType::Text,
+            target_selector: target_selector.to_string(),            content_type: ContentType::Text,
             json_field: json_field.map(|s| s.to_string()),
             transform: None,
             show_errors: true,
-            input_field_selector: None,
+            input_field_selectors: Vec::new(),
         }
-    }    /// Constructeur pour un rafraîchissement HTML
+    }/// Constructeur pour un rafraîchissement HTML
     pub fn new_html(
         id: &str,
         endpoint: &str,
@@ -76,22 +75,19 @@ impl RefreshConfig {    /// Constructeur simple pour un rafraîchissement de tex
             id: id.to_string(),
             endpoint: endpoint.to_string(),
             interval_seconds,
-            target_selector: target_selector.to_string(),
-            content_type: ContentType::Html,
+            target_selector: target_selector.to_string(),            content_type: ContentType::Html,
             json_field: json_field.map(|s| s.to_string()),
             transform: None,
             show_errors: true,
-            input_field_selector: None,
+            input_field_selectors: Vec::new(),
         }
-    }    /// Ajouter une transformation
+    }/// Ajouter une transformation
     pub fn with_transform(mut self, transform: DataTransform) -> Self {
         self.transform = Some(transform);
         self
-    }
-
-    /// Ajouter un champ input comme source de paramètre
-    pub fn with_input_field(mut self, input_selector: &str) -> Self {
-        self.input_field_selector = Some(input_selector.to_string());
+    }    /// Ajouter un champ input comme source de paramètre
+    pub fn with_input_field(mut self, param_name: &str, input_selector: &str) -> Self {
+        self.input_field_selectors.push((param_name.to_string(), input_selector.to_string()));
         self
     }
 
