@@ -9,7 +9,7 @@ use crate::{
     client_tools::log,
     client_request,
     modal::Modal,
-    form::{FormField, FormConfig, FormProcessor, FieldType},
+    form::{FormField, FormConfig, FormProcessor, FieldType, FieldConfig},
     validation::FormValidator
 };
 
@@ -42,6 +42,40 @@ impl FormHandler {
             .ok_or_else(|| JsValue::from_str(&format!("Form '{}' not found", form_id)))?;
 
         let fields = Self::create_form_fields(&document, field_specs)?;
+        
+        let submit_button = document
+            .query_selector(&format!("button[form='{}']", form_id))?
+            .or_else(|| form.query_selector("button[type='submit']").ok().flatten())
+            .or_else(|| form.query_selector("input[type='submit']").ok().flatten())
+            .ok_or_else(|| JsValue::from_str("Submit button not found"))?
+            .dyn_into::<HtmlButtonElement>()?;        Ok(Self {
+            form_id: form_id.to_string(),
+            fields,
+            config,
+            modal: Modal::new()?,
+            submit_button,
+            endpoint: endpoint.to_string(),
+            validator: None,
+        })
+    }
+
+    /// Create a new form handler with field configurations
+    pub fn new_with_field_configs(
+        form_id: &str,
+        endpoint: &str,
+        field_configs: Option<&std::collections::HashMap<&str, FieldConfig>>,
+        config: FormConfig,
+    ) -> Result<Self, JsValue> {
+        let document = window()
+            .ok_or_else(|| JsValue::from_str("Window not available"))?
+            .document()
+            .ok_or_else(|| JsValue::from_str("Document not available"))?;
+
+        let form = document
+            .get_element_by_id(form_id)
+            .ok_or_else(|| JsValue::from_str(&format!("Form '{}' not found", form_id)))?;
+
+        let fields = Self::create_form_fields_with_config(&document, field_configs)?;
         
         let submit_button = document
             .query_selector(&format!("button[form='{}']", form_id))?
@@ -223,11 +257,32 @@ impl FormHandler {
             let text = self.submit_button.inner_text();
             self.submit_button.set_inner_text(&text.replace("Submit", "Submit"));
             self.submit_button.set_disabled(false);
-        }
-        Ok(())
-    }
+        }        Ok(())
+    }    /// Create form fields with configurations
+    fn create_form_fields_with_config(
+        document: &Document,
+        field_configs: Option<&std::collections::HashMap<&str, FieldConfig>>,
+    ) -> Result<Vec<FormField>, JsValue> {
+        let mut fields = Vec::new();
+        
+        if let Some(configs) = field_configs {
+            for (id, config) in configs {
+                let element = document
+                    .get_element_by_id(id)
+                    .ok_or_else(|| JsValue::from_str(&format!("Element '{}' not found", id)))?;
 
-    /// Create form fields from specifications
+                let field = FormField::with_config(
+                    id.to_string(),
+                    config.clone(),
+                    element,
+                )?;
+                
+                fields.push(field);
+            }
+        }
+        
+        Ok(fields)
+    }    /// Create form fields from specifications
     fn create_form_fields(
         document: &Document,
         specs: Option<&[(&str, FieldType)]>,
@@ -236,16 +291,15 @@ impl FormHandler {
         
         if let Some(specs) = specs {
             for &(id, ref field_type) in specs {
-                let input = document
+                let element = document
                     .get_element_by_id(id)
-                    .ok_or_else(|| JsValue::from_str(&format!("Input '{}' not found", id)))?
-                    .dyn_into::<web_sys::HtmlInputElement>()?;
+                    .ok_or_else(|| JsValue::from_str(&format!("Element '{}' not found", id)))?;
 
-                let required = input.has_attribute("required");
+                let required = element.has_attribute("required");
                 let field = FormField::with_validation(
                     id.to_string(),
                     field_type.clone(),
-                    input,
+                    element,
                     required,
                 )?;
 

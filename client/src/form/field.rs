@@ -1,6 +1,71 @@
-use web_sys::HtmlInputElement;
+use web_sys::{HtmlInputElement, Element};
 use serde::{Serialize, Deserialize};
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsValue, JsCast};
+
+/// Option for select fields, radio buttons, etc.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct FieldOption {
+    pub value: String,
+    pub label: String,
+    pub selected: bool,
+}
+
+impl FieldOption {
+    pub fn new<V: Into<String>, L: Into<String>>(value: V, label: L) -> Self {
+        Self {
+            value: value.into(),
+            label: label.into(),
+            selected: false,
+        }
+    }
+
+    pub fn selected(mut self) -> Self {
+        self.selected = true;
+        self
+    }
+}
+
+/// Field configuration with options and default values
+#[derive(Clone, Debug)]
+pub struct FieldConfig {
+    pub field_type: FieldType,
+    pub options: Option<Vec<FieldOption>>,
+    pub default_value: Option<String>,
+    pub placeholder: Option<String>,
+    pub required: bool,
+}
+
+impl FieldConfig {
+    pub fn new(field_type: FieldType) -> Self {
+        Self {
+            field_type,
+            options: None,
+            default_value: None,
+            placeholder: None,
+            required: false,
+        }
+    }
+
+    pub fn with_options(mut self, options: Vec<FieldOption>) -> Self {
+        self.options = Some(options);
+        self
+    }
+
+    pub fn with_default_value<S: Into<String>>(mut self, value: S) -> Self {
+        self.default_value = Some(value.into());
+        self
+    }
+
+    pub fn with_placeholder<S: Into<String>>(mut self, placeholder: S) -> Self {
+        self.placeholder = Some(placeholder.into());
+        self
+    }
+
+    pub fn required(mut self) -> Self {
+        self.required = true;
+        self
+    }
+}
 
 /// Supported field types with validation patterns
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -54,54 +119,123 @@ impl FieldType {
 pub struct FormField {
     id: String,
     field_type: FieldType,
-    input: HtmlInputElement,
+    element: Element,  // Changed from HtmlInputElement to Element
     required: bool,
     label: Option<String>,
+    config: Option<FieldConfig>,
 }
 
 impl FormField {
     pub fn new(
         id: String,
         field_type: FieldType,
-        input: HtmlInputElement,
+        element: Element,
     ) -> Self {
         Self {
             id,
             field_type,
-            input,
+            element,
             required: false,
             label: None,
+            config: None,
         }
     }
 
-    /// Create a FormField with validation setup
+    /// Create a FormField with configuration
+    pub fn with_config(
+        id: String,
+        config: FieldConfig,
+        element: Element,
+    ) -> Result<Self, JsValue> {
+        // Set HTML attributes based on field type
+        if config.field_type != FieldType::Select {
+            element.set_attribute("type", config.field_type.html_type())?;
+        }
+        
+        if config.field_type.supports_multiple() {
+            element.set_attribute("multiple", "")?;
+        }
+
+        if config.required {
+            element.set_attribute("required", "")?;
+        }        // Set placeholder if provided (for input elements)
+        if let Some(placeholder) = &config.placeholder {
+            element.set_attribute("placeholder", placeholder)?;
+        }
+
+        // Set default value if provided
+        if let Some(default_value) = &config.default_value {
+            js_sys::Reflect::set(&element, &JsValue::from_str("value"), &JsValue::from_str(default_value))?;
+        }
+
+        // Handle select fields with options
+        if config.field_type == FieldType::Select {
+            if let Some(options) = &config.options {
+                Self::populate_select_options(&element, options)?;
+            }
+        }
+
+        Ok(Self {
+            id,
+            field_type: config.field_type.clone(),
+            element,
+            required: config.required,
+            label: None,
+            config: Some(config),
+        })
+    }    /// Populate select field with options
+    fn populate_select_options(element: &Element, options: &[FieldOption]) -> Result<(), JsValue> {
+        // Clear existing options
+        element.set_inner_html("");
+
+        // Add new options
+        for option in options {
+            let option_element: Element = web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .create_element("option")?;
+                
+            option_element.set_attribute("value", &option.value)?;
+            option_element.set_text_content(Some(&option.label));
+            
+            if option.selected {
+                option_element.set_attribute("selected", "selected")?;
+            }
+            
+            element.append_child(&option_element)?;
+        }
+
+        Ok(())
+    }    /// Create a FormField with validation setup
     pub fn with_validation(
         id: String,
         field_type: FieldType,
-        input: HtmlInputElement,
+        element: Element,
         required: bool,
     ) -> Result<Self, JsValue> {
         // Set HTML attributes based on field type
-        input.set_attribute("type", field_type.html_type())?;
+        if field_type != FieldType::Select && field_type != FieldType::TextArea {
+            element.set_attribute("type", field_type.html_type())?;
+        }
         
         if field_type.supports_multiple() {
-            input.set_attribute("multiple", "")?;
+            element.set_attribute("multiple", "")?;
         }
 
         if required {
-            input.set_attribute("required", "")?;
+            element.set_attribute("required", "")?;
         }
 
         Ok(Self {
             id,
             field_type,
-            input,
+            element,
             required,
             label: None,
+            config: None,
         })
-    }
-
-    pub fn with_label<S: Into<String>>(mut self, label: S) -> Self {
+    }pub fn with_label<S: Into<String>>(mut self, label: S) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -113,10 +247,11 @@ impl FormField {
 
     pub fn field_type(&self) -> &FieldType {
         &self.field_type
-    }
-
-    pub fn input(&self) -> &HtmlInputElement {
-        &self.input
+    }    pub fn element(&self) -> &Element {
+        &self.element
+    }    /// Get the element as HtmlInputElement if it is one
+    pub fn input(&self) -> Option<HtmlInputElement> {
+        self.element.dyn_ref::<HtmlInputElement>().cloned()
     }
 
     pub fn is_required(&self) -> bool {
@@ -127,32 +262,44 @@ impl FormField {
         self.label.as_deref()
     }
 
-    /// Get the current value of the field
+    pub fn config(&self) -> Option<&FieldConfig> {
+        self.config.as_ref()
+    }    /// Get the current value of the field
     pub fn value(&self) -> String {
-        self.input.value()
+        // Try to get value property using reflection
+        if let Ok(value) = js_sys::Reflect::get(&self.element, &JsValue::from_str("value")) {
+            if let Some(value_str) = value.as_string() {
+                return value_str;
+            }
+        }
+        String::new()
     }
 
     /// Set the value of the field
     pub fn set_value(&self, value: &str) -> Result<(), JsValue> {
-        self.input.set_value(value);
+        js_sys::Reflect::set(&self.element, &JsValue::from_str("value"), &JsValue::from_str(value))?;
         Ok(())
     }
 
     /// Focus on this field
     pub fn focus(&self) -> Result<(), JsValue> {
-        self.input.focus()
-    }
-
-    /// Check if the field has files (for file inputs)
+        // Try to call focus method using reflection
+        if let Ok(focus_fn) = js_sys::Reflect::get(&self.element, &JsValue::from_str("focus")) {
+            if let Ok(focus_fn) = focus_fn.dyn_into::<js_sys::Function>() {
+                focus_fn.call0(&self.element)?;
+            }
+        }
+        Ok(())
+    }/// Check if the field has files (for file inputs)
     pub fn has_files(&self) -> bool {
         self.field_type.supports_files() && 
-        self.input.files().map_or(false, |files| files.length() > 0)
+        self.input().map_or(false, |input| input.files().map_or(false, |files| files.length() > 0))
     }
 
     /// Get files from the field (for file inputs)
     pub fn files(&self) -> Option<web_sys::FileList> {
         if self.field_type.supports_files() {
-            self.input.files()
+            self.input().and_then(|input| input.files())
         } else {
             None
         }

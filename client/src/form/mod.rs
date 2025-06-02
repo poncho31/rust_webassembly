@@ -8,7 +8,7 @@ pub mod cache;
 pub mod examples;
 
 pub use config::FormConfig;
-pub use field::{FormField, FieldType};
+pub use field::{FormField, FieldType, FieldConfig, FieldOption};
 pub use handler::{FormHandler, form_init, form_init_with_config};
 pub use processor::FormProcessor;
 pub use errors::{FormError, FormResult, ErrorContext};

@@ -7,6 +7,7 @@ use actix_cors::Cors;
 mod controllers;
 use crate::controllers::ping_controller;
 use crate::controllers::form_controller;
+use crate::controllers::weather_controller;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -35,11 +36,11 @@ async fn main() -> std::io::Result<()> {
             *  ██████  ██    ██ ██  ██    ██    █████    ███████
             *  ██   ██ ██    ██ ██  ██    ██    ██            ██
             *  ██   ██  ██████   ████     ██    ███████  ██████
-            */  
-             .service(web::scope("/api")
+            */             .service(web::scope("/api")
                     .route("/form", web::post().to(form_controller::post))
                     .route("/ping", web::post().to(ping_controller::get))
                     .route("/ping", web::get().to(ping_controller::get))
+                    .route("/weather/temperature", web::get().to(weather_controller::get_temperature))
             )
             .service(Files::new("/test", &static_path).index_file("test.html".to_string()))
             .service(Files::new("/", &static_path).index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string())))
@@ -62,6 +63,7 @@ async fn main() -> std::io::Result<()> {
     println!("🔧 API endpoints:");
     println!("   • POST /api/ping - Ping server");
     println!("   • POST /api/form - Submit form");
+    println!("   • GET /api/weather/temperature - Get current temperature");
     
     http_server.run().await
 }

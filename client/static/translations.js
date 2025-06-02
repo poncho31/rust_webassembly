@@ -1,9 +1,9 @@
-const translations = {
-    fr: {
+const translations = {      fr: {
         login: "Identifiant",
         birthday : "Date de naissance",
         firstname: "Prénom",
         lastname: "Nom",
+        sexe: "Sexe",
         age: "Âge",
         file: "Fichier",
         email: "Courriel",        submit: "Envoyer",
@@ -12,15 +12,18 @@ const translations = {
         status: "Statut",
         message: "Message",
         checking: "Vérification...",
-        connecting: "Connexion au serveur...",        no_file_chosen: "Aucun fichier choisi",
+        connecting: "Connexion au serveur...",        
+        no_file_chosen: "Aucun fichier choisi",
         files: "Fichiers",
+        files_selected: "fichiers sélectionnés",
         ping: "Ping",
     },
-    en: {
+      en: {
         login: "Login",
         birthday: "Birthday",
         firstname: "Firstname",
         lastname: "Lastname",
+        sexe: "Gender",
         age: "Age",
         file: "File",
         email: "Email",        submit: "Submit",
@@ -29,8 +32,10 @@ const translations = {
         status: "Status",
         message: "Message",
         checking: "Checking...",
-        connecting: "Connecting to server...",        no_file_chosen: "No file chosen",
+        connecting: "Connecting to server...",        
+        no_file_chosen: "No file chosen",
         files: "Files",
+        files_selected: "files selected",
         ping: "Ping",
     }
 };

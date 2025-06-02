@@ -121,9 +121,12 @@ impl FormProcessor {
                             value.parse::<f64>()
                                 .map(|n| json!(n))
                                 .unwrap_or_else(|_| json!(value))
-                        }
-                        crate::form::FieldType::Checkbox => {
-                            json!(field.input().checked())
+                        }                        crate::form::FieldType::Checkbox => {
+                            if let Some(input) = field.input() {
+                                json!(input.checked())
+                            } else {
+                                json!(false)
+                            }
                         }
                         _ => json!(value)
                     };

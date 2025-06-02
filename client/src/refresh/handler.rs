@@ -14,12 +14,28 @@ impl RefreshHandler {
     /// Créer un nouveau gestionnaire
     pub fn new(config: RefreshConfig) -> Self {
         Self { config }
-    }
-
-    /// Exécuter un rafraîchissement
+    }    /// Exécuter un rafraîchissement
     pub async fn execute_refresh(&self) {
-        log(&format!("🔄 Refreshing: {}", self.config.id));        // Utiliser client_request pour faire l'appel API
-        match fetch_json::<Value>(&self.config.endpoint).await {
+        log(&format!("🔄 Refreshing: {}", self.config.id));
+          // Construire l'URL avec les paramètres si un champ input est configuré
+        let url = if let Some(input_selector) = &self.config.input_field_selector {
+            match self.get_input_value(input_selector) {
+                Ok(value) => {
+                    // Simple URL encoding pour les espaces et caractères spéciaux
+                    let encoded_value = value.replace(" ", "%20").replace("é", "%C3%A9").replace("è", "%C3%A8");
+                    format!("{}?region={}", self.config.endpoint, encoded_value)
+                }
+                Err(e) => {
+                    log(&format!("⚠️ Failed to get input value: {}", e));
+                    self.config.endpoint.clone()
+                }
+            }
+        } else {
+            self.config.endpoint.clone()
+        };
+
+        // Utiliser client_request pour faire l'appel API
+        match fetch_json::<Value>(&url).await {
             Ok(response) => {
                 if let Err(e) = self.update_dom(&response).await {
                     if self.config.show_errors {
@@ -35,6 +51,23 @@ impl RefreshHandler {
                 log(&format!("❌ Refresh failed for {}: {:?}", self.config.id, e));
             }
         }
+    }
+
+    /// Récupérer la valeur d'un champ input
+    fn get_input_value(&self, selector: &str) -> Result<String, String> {
+        let window = web_sys::window().ok_or("No window")?;
+        let document = window.document().ok_or("No document")?;
+        
+        let element = document
+            .query_selector(selector)
+            .map_err(|_| "Query selector failed")?
+            .ok_or_else(|| format!("Input element not found: {}", selector))?;
+
+        let input_element = element
+            .dyn_into::<HtmlInputElement>()
+            .map_err(|_| "Element is not an input element")?;
+
+        Ok(input_element.value())
     }
 
     /// Mettre à jour le DOM avec les données reçues

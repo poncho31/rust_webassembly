@@ -17,6 +17,8 @@ pub struct RefreshConfig {
     pub transform: Option<DataTransform>,
     /// Afficher les erreurs dans l'interface
     pub show_errors: bool,
+    /// Sélecteur d'un champ input dont la valeur sera utilisée comme paramètre
+    pub input_field_selector: Option<String>,
 }
 
 /// Type de contenu à insérer dans l'élément
@@ -43,8 +45,7 @@ pub struct DataTransform {
     pub format: Option<String>,
 }
 
-impl RefreshConfig {
-    /// Constructeur simple pour un rafraîchissement de texte
+impl RefreshConfig {    /// Constructeur simple pour un rafraîchissement de texte
     pub fn new_text(
         id: &str,
         endpoint: &str,
@@ -61,10 +62,9 @@ impl RefreshConfig {
             json_field: json_field.map(|s| s.to_string()),
             transform: None,
             show_errors: true,
+            input_field_selector: None,
         }
-    }
-
-    /// Constructeur pour un rafraîchissement HTML
+    }    /// Constructeur pour un rafraîchissement HTML
     pub fn new_html(
         id: &str,
         endpoint: &str,
@@ -81,12 +81,17 @@ impl RefreshConfig {
             json_field: json_field.map(|s| s.to_string()),
             transform: None,
             show_errors: true,
+            input_field_selector: None,
         }
-    }
-
-    /// Ajouter une transformation
+    }    /// Ajouter une transformation
     pub fn with_transform(mut self, transform: DataTransform) -> Self {
         self.transform = Some(transform);
+        self
+    }
+
+    /// Ajouter un champ input comme source de paramètre
+    pub fn with_input_field(mut self, input_selector: &str) -> Self {
+        self.input_field_selector = Some(input_selector.to_string());
         self
     }
 

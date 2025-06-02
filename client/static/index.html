@@ -27,18 +27,31 @@
                     <div class="field">
                         <label for="firstname" data-translate="firstname"></label>
                         <input type="text" id="firstname" value="Test">
-                    </div>
-
-                    <!-- Lastname -->
+                    </div>                    <!-- Lastname -->
                     <div class="field">
                         <label for="lastname" data-translate="lastname"></label>
                         <input type="text" id="lastname" value="Test">
+                    </div>
+
+                    <!-- Sexe -->
+                    <div class="field">
+                        <label for="sexe" data-translate="sexe"></label>
+                        <select id="sexe">
+                            <!-- Options seront ajoutées dynamiquement par JavaScript -->
+                        </select>
                     </div>
 
                     <!-- Age -->
                     <div class="field">
                         <label for="age" data-translate="age"></label>
                         <input type="text" id="age" value="31">
+                    </div>
+
+                    
+                    <!-- info -->
+                    <div class="field">
+                        <label for="info" data-translate="info"></label>
+                        <textarea type="text" id="info" value="Info"></textarea>
                     </div>
 
                     <!-- Files -->
@@ -56,20 +69,15 @@
                         <input type="email" id="email" value="Test@test.test">
                     </div>            </form>
             <!-- Submit button outside form with form attribute -->
-            <button type="submit" form="form" data-translate="submit">
-                <span class="loader"></span>
-            </button>
-        </div>
+            <div class="align_items">
 
-        <form id="button_ping">
-            <button type="submit" form="button_ping" data-translate="ping"></button>
-        </form><div class="server-info">
-            <h2 data-translate="serverStatus">Server Status</h2>
-            <div>
-                <span data-translate="status">Status:</span> 
-                <span class="status-box" id="server-status" data-translate="checking">Checking...</span>
-                <span data-translate="message">Message:</span> 
-                <span id="server-message" data-translate="connecting">Connecting to server...</span>
+                <button type="submit" form="form" data-translate="submit">
+                    <span class="loader"></span>
+                </button>
+                
+                <form id="button_ping"></form>
+                    <button type="submit" form="button_ping" data-translate="ping"></button>
+                </div>
             </div>
         </div>
 
@@ -77,8 +85,13 @@
         <div class="auto-refresh-container">
             <h2>🔄 Rafraîchissement Automatique</h2>
             
-            <div class="refresh-examples">                <div class="refresh-card">
-                    <h3>Statut HTTP</h3>
+            <div class="refresh-examples">
+                <div class="refresh-card">
+                    <h3>🌡️ Température Actuelle</h3>
+                    <div class="field">
+                        <label for="region">Région:</label>
+                        <input type="text" id="region" value="Bruxelles" placeholder="Entrez une ville">
+                    </div>
                     <p>Mise à jour toutes les 30 secondes</p>
                     <div class="refresh-value" id="auto-server-status">En attente...</div>
                 </div><div class="refresh-card">
@@ -93,10 +106,7 @@
                     <div class="refresh-value" id="auto-message">En attente...</div>
                 </div>
             </div>
-        </div>
-
-
-        <script type="module">
+        </div>        <script type="module">
             import { translate } from '/translations.js';
             import init from "/pkg/client.js";
 
@@ -104,7 +114,31 @@
             document.querySelectorAll('[data-translate]').forEach(element => {
                 const key = element.getAttribute('data-translate');
                 element.textContent = translate(key);
-            });
+            });            // Gérer l'affichage du nom des fichiers choisis
+            function setupFileDisplay() {
+                const fileInput = document.getElementById('files');
+                const fileName = document.querySelector('.file-name');
+                
+                if (fileInput && fileName) {
+                    fileInput.addEventListener('change', function(event) {
+                        const files = event.target.files;
+                        if (files.length > 0) {
+                            if (files.length === 1) {
+                                fileName.textContent = files[0].name;
+                            } else {
+                                fileName.textContent = `${files.length} ${translate('files_selected')}`;
+                            }
+                            fileName.title = Array.from(files).map(f => f.name).join(', ');
+                        } else {
+                            fileName.textContent = translate('no_file_chosen');
+                            fileName.title = '';
+                        }
+                    });
+                }
+            }
+
+            // Initialiser après le chargement du DOM
+            document.addEventListener('DOMContentLoaded', setupFileDisplay);
 
             init();
         </script>

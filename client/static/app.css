@@ -69,10 +69,13 @@ label {
     margin: 5px;
 }
 
-input[type="text"],
+textarea,
 input[type="date"],
+input[type="number"],
+input[type="text"],
 input[type="email"],
-input[type="file"] {
+input[type="file"],
+select {
     width: 100%;
     padding: calc(0.5em - 1px) calc(0.75em - 1px);
     background-color: white;
@@ -82,12 +85,33 @@ input[type="file"] {
     height: 2.5em;
 }
 
+textarea:focus,
 input[type="date"]:focus,
+input[type="number"]:focus,
 input[type="text"]:focus,
-input[type="email"]:focus {
+input[type="email"]:focus,
+select:focus {
     border-color: #485fc7;
     box-shadow: 0 0 0 0.125em rgba(72, 95, 199, 0.25);
     outline: none;
+}
+
+/* Specific styles for select elements */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'%3E%3Cpath fill='%23363636' d='m2 0-2 2h4zm0 5 2-2h-4z'/%3E%3C/svg%3E");
+    background-position: right 0.75em center;
+    background-repeat: no-repeat;
+    background-size: 0.625em;
+    padding-right: 2.5em;
+}
+
+select:hover {
+    border-color: #b5b5b5;
+}
+
+select option {
+    padding: 0.5rem;
 }
 
 button[type="submit"] {
@@ -193,9 +217,9 @@ input[type="file"] {
     color: #4a4a4a;
 }
 
-.file-label::after {
-    content: "Browse";
-    background-color: #485fc7;
+.file-label::before {
+    content: "📁";
+    /* background-color: #485fc7; */
     color: white;
     padding: 0 1em;
     height: 2.5em;
@@ -203,14 +227,14 @@ input[type="file"] {
     align-items: center;
     border-radius: 0 4px 4px 0;
     margin: calc(-0.5em - 1px) calc(-0.75em - 1px);
-    margin-left: 1em;
+    margin-right: 1em;
 }
 
-.file-label:hover::after {
+.file-label:hover::before {
     background-color: #3e54b4;
 }
 
-.file:active .file-label::after {
+.file:active .file-label::before {
     background-color: #364aa1;
 }
 
@@ -220,6 +244,15 @@ input[type="file"] {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: #4a4a4a;
+    font-style: italic;
+    padding: 0.5em 0;
+}
+
+.file-name:not([data-translate="no_file_chosen"]) {
+    font-style: normal;
+    font-weight: 500;
+    color: #363636;
 }
 
 /* Auto-refresh styles */
@@ -299,4 +332,44 @@ input[type="file"] {
 
 .refresh-value.updated {
     animation: refresh-update 0.5s ease;
+}
+
+/* Styles spécifiques pour le champ région dans les cartes de rafraîchissement */
+.refresh-card .field {
+    margin-bottom: 0.75rem;
+}
+
+.refresh-card .field label {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #495057;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.refresh-card .field input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.refresh-card .field input:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.refresh-card .field input::placeholder {
+    color: #6c757d;
+    opacity: 1;
+}
+
+.align_items{
+    display: flex; 
+    align-items: center; 
+    gap: 5px; 
+    margin-top: 1rem;
 }
