@@ -17,7 +17,7 @@ async fn main() -> std::io::Result<()> {
     let (static_path, pkg_path, favicon_path) = get_static_path().expect("Failed to initialize static paths");
 
 
-    HttpServer::new(move || {
+    let http_server_instance = HttpServer::new(move || {
         let cors = Cors::permissive()
             .allow_any_origin()
             .allow_any_method()
@@ -35,13 +35,14 @@ async fn main() -> std::io::Result<()> {
             *  ██████  ██    ██ ██  ██    ██    █████    ███████
             *  ██   ██ ██    ██ ██  ██    ██    ██            ██
             *  ██   ██  ██████   ████     ██    ███████  ██████
-            */
-            .service(
-                web::scope("/api")
-                    .route("/ping", web::get().to(ping_controller::get))
-                    .route("/ping", web::post().to(ping_controller::get))
+            */  
+             .service(web::scope("/api")
                     .route("/form", web::post().to(form_controller::post))
+                    .route("/ping", web::post().to(ping_controller::get))
+                    .route("/ping", web::get().to(ping_controller::get))
             )
+            .service(Files::new("/test", &static_path).index_file("test.html".to_string()))
+            .service(Files::new("/", &static_path).index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string())))
 
             /*
              *  ███████ ████████  █████  ████████ ██  ██████  ███████
@@ -52,15 +53,17 @@ async fn main() -> std::io::Result<()> {
              */
             .service(Files::new("/pkg", &pkg_path).show_files_listing())
             .service(Files::new("/favicon.ico", &favicon_path))
-            .service(Files::new("/", &static_path).index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string())))
             .default_service(web::route().to(|| async {
                 HttpResponse::NotFound().body("Resource not found")
-            }))
-    })
-    .workers(1)
-    .bind((host, port))?
-    .run()
-    .await
+            }))    })
+    .workers(1);
+    
+    let http_server = http_server_instance.bind((host.clone(), port))?;    println!("🚀 Server starting on http://{}:{}", host, port);
+    println!("🔧 API endpoints:");
+    println!("   • POST /api/ping - Ping server");
+    println!("   • POST /api/form - Submit form");
+    
+    http_server.run().await
 }
 
 fn get_server_config() -> (String, u16) {

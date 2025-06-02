@@ -1,4 +1,4 @@
-use web_sys::{window, Document, Element, HtmlElement, Event};
+use web_sys::{window, Element, Event};
 use wasm_bindgen::prelude::*;
 
 /// Modal structure representing a popup dialog

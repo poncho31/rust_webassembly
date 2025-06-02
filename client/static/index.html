@@ -50,32 +50,48 @@
                                 <span class="file-name" data-translate="no_file_chosen"></span>
                             </label>
                         </div>
-                    </div>
-
-                    <!-- Email -->
+                    </div>                    <!-- Email -->
                     <div class="field">
                         <label for="email" data-translate="email"></label>
                         <input type="email" id="email" value="Test@test.test">
-                    </div>
-            </form>
-            <button form="form" type="submit" data-translate="submit">
+                    </div>            </form>
+            <!-- Submit button outside form with form attribute -->
+            <button type="submit" form="form" data-translate="submit">
                 <span class="loader"></span>
             </button>
         </div>
 
         <form id="button_ping">
-            <button  type="submit" form="button_ping" data-translate="ping"></button>
-        </form>
-   
-
-        <div class="server-info">
-
+            <button type="submit" form="button_ping" data-translate="ping"></button>
+        </form><div class="server-info">
             <h2 data-translate="serverStatus">Server Status</h2>
             <div>
                 <span data-translate="status">Status:</span> 
                 <span class="status-box" id="server-status" data-translate="checking">Checking...</span>
                 <span data-translate="message">Message:</span> 
                 <span id="server-message" data-translate="connecting">Connecting to server...</span>
+            </div>
+        </div>
+
+        <!-- Section de rafraîchissement automatique -->
+        <div class="auto-refresh-container">
+            <h2>🔄 Rafraîchissement Automatique</h2>
+            
+            <div class="refresh-examples">                <div class="refresh-card">
+                    <h3>Statut HTTP</h3>
+                    <p>Mise à jour toutes les 30 secondes</p>
+                    <div class="refresh-value" id="auto-server-status">En attente...</div>
+                </div><div class="refresh-card">
+                    <h3>Code Statut HTTP</h3>
+                    <p>Mise à jour toutes les 10 secondes</p>
+                    <div class="refresh-value" id="auto-counter">En attente...</div>
+                </div>
+
+                <div class="refresh-card">
+                    <h3>Message HTML</h3>
+                    <p>Mise à jour toutes les minutes</p>
+                    <div class="refresh-value" id="auto-message">En attente...</div>
+                </div>
             </div>
         </div>
 

@@ -1,5 +1,5 @@
 use actix_web::HttpResponse;
-use core::{User, HttpSendResponse};
+use core::{HttpSendResponse};
 
 pub async fn get() -> HttpResponse {
     println!("Ping request received!");
