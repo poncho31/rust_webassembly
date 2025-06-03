@@ -26,7 +26,7 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
         
         match (field_name, filename) {
             // Handle file upload fields (has both name and filename)
-            (Some(name), Some(filename)) => {
+            (Some(_name), Some(filename)) => {
                 match save_uploaded_file(&mut field, &filename).await {
                     Ok(save_info) => {
                         files_info.push(format!("{} ({})", filename, save_info));

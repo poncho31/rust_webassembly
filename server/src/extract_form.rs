@@ -4,7 +4,6 @@ use actix_multipart::Field;
 use futures::StreamExt;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-use std::collections::HashMap;
 
 pub async fn extract_file_info(field: &mut Field) -> String {
     let filename = field.content_disposition()
