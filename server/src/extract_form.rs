@@ -40,7 +40,7 @@ pub async fn extract_form_field(field: &mut Field) -> (String, String) {
 
 pub async fn save_uploaded_file(field: &mut Field, filename: &str) -> Result<String, std::io::Error> {
     // Créer le dossier Storage/form s'il n'existe pas
-    let upload_dir = Path::new("Storage/files");
+    let upload_dir = Path::new("storage/files");
     fs::create_dir_all(upload_dir)?;
 
     // Construire le chemin complet du fichier

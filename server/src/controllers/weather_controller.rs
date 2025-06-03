@@ -35,7 +35,7 @@ pub async fn get_temperature(query: web::Query<WeatherQuery>, _req: HttpRequest)
         });
 
     let response = WeatherResponse {
-        temperature : format!("{}°C, {} {}", temperature.to_string(), &pays, &test),
+        temperature : format!("{}°C, {}", temperature.to_string(), &pays),
         region: region.clone(),
         status: 200,
         message: format!("Température actuelle pour {} {}", region , pays),
