@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚫 YouTube AdBlock Proxy - Interface de Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            font-weight: 300;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-left: 5px solid #28a745;
+        }
+
+        .status-card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .log-container {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+
+        .log-info { color: #00ff00; }
+        .log-warn { color: #ffaa00; }
+        .log-error { color: #ff4444; }
+        .log-success { color: #44ff44; }
+
+        .blocked-domains {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .domain-item {
+            background: #fee;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .proxy-url {
+            background: #333;
+            color: #0f0;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: monospace;
+            display: inline-block;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚫 YouTube AdBlock Proxy</h1>
+            <p class="subtitle">Interface de test et de monitoring en temps réel</p>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 Comment utiliser le proxy AdBlock</h3>
+            <ol>
+                <li>Configurez votre navigateur pour utiliser le proxy HTTP : <span class="proxy-url">127.0.0.1:8089</span></li>
+                <li>Ou utilisez l'URL directe : <span class="proxy-url">http://127.0.0.1:8089/proxy/youtube/</span></li>
+                <li>Naviguez sur YouTube normalement</li>
+                <li>Les publicités seront automatiquement bloquées et loggées ici</li>
+            </ol>
+        </div>
+
+        <div class="status-card">
+            <h2>📊 Statut du Proxy</h2>
+            <div id="status-info">Chargement...</div>
+        </div>
+
+        <div class="stats-grid" id="stats-grid">
+            <!-- Les statistiques seront chargées dynamiquement -->
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Tests de Fonctionnalité</h3>
+            
+            <div class="input-group">
+                <label for="test-url">URL YouTube à tester :</label>
+                <input type="text" id="test-url" placeholder="Exemple: https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
+                       value="https://www.youtube.com/">
+            </div>
+
+            <button class="btn" onclick="testProxy()">🔍 Tester via Proxy</button>
+            <button class="btn btn-success" onclick="refreshStats()">🔄 Actualiser Stats</button>
+            <button class="btn btn-danger" onclick="clearLogs()">🗑️ Effacer Logs</button>
+        </div>
+
+        <div class="test-section">
+            <h3>🚫 Domaines Bloqués</h3>
+            <div id="blocked-domains-list">Chargement...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Logs en Temps Réel</h3>
+            <button class="btn" onclick="toggleAutoRefresh()">⏰ Auto-refresh: <span id="auto-status">OFF</span></button>
+            <div class="log-container" id="log-container">
+                <div class="log-entry log-info">[INFO] Interface de test initialisée</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+        let isAutoRefresh = false;
+
+        // Fonction pour logger dans l'interface
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('log-container');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Charger les statistiques du proxy
+        async function loadStats() {
+            try {
+                const response = await fetch('http://127.0.0.1:8089/proxy/adblock/status');
+                const data = await response.json();
+                
+                document.getElementById('status-info').innerHTML = `
+                    <strong>Status:</strong> ${data.status} ✅<br>
+                    <strong>Message:</strong> ${data.message}<br>
+                    <strong>Dernière mise à jour:</strong> ${new Date(data.timestamp).toLocaleString()}
+                `;
+
+                const statsGrid = document.getElementById('stats-grid');
+                const stats = data.statistics || {
+                    total_requests_processed: 0,
+                    ads_blocked: 0,
+                    html_cleanings_performed: 0,
+                    block_rate_percentage: 0
+                };
+
+                statsGrid.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.total_requests_processed}</div>
+                        <div class="stat-label">Requêtes Traitées</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.ads_blocked}</div>
+                        <div class="stat-label">Publicités Bloquées</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.html_cleanings_performed}</div>
+                        <div class="stat-label">Nettoyages HTML</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.block_rate_percentage}%</div>
+                        <div class="stat-label">Taux de Blocage</div>
+                    </div>
+                `;
+
+                // Afficher les domaines bloqués
+                const domainsContainer = document.getElementById('blocked-domains-list');
+                domainsContainer.innerHTML = data.blocked_domains_list.map(domain => 
+                    `<div class="domain-item">🚫 ${domain}</div>`
+                ).join('');
+
+                addLog(`Stats mises à jour: ${stats.ads_blocked} ads bloquées sur ${stats.total_requests_processed} requêtes`, 'success');
+                
+            } catch (error) {
+                addLog(`Erreur lors du chargement des stats: ${error.message}`, 'error');
+                document.getElementById('status-info').innerHTML = '<strong style="color: red;">❌ Proxy non accessible</strong>';
+            }
+        }
+
+        // Tester une URL via le proxy
+        async function testProxy() {
+            const url = document.getElementById('test-url').value;
+            if (!url) {
+                addLog('Veuillez entrer une URL à tester', 'warn');
+                return;
+            }
+
+            addLog(`Test en cours: ${url}`, 'info');
+            
+            try {
+                // Extraire le chemin YouTube
+                const youtubeUrl = new URL(url);
+                const path = youtubeUrl.pathname + youtubeUrl.search;
+                const proxyUrl = `http://127.0.0.1:8089/proxy/youtube${path}`;
+                
+                addLog(`Requête proxy: ${proxyUrl}`, 'info');
+                
+                const response = await fetch(proxyUrl);
+                const text = await response.text();
+                
+                addLog(`Réponse reçue (${response.status}): ${text.length} caractères`, 'success');
+                
+                // Vérifier si le CSS anti-pub a été injecté
+                if (text.includes('/* Masquer les publicités YouTube */')) {
+                    addLog('✅ CSS anti-publicité détecté dans la réponse', 'success');
+                } else {
+                    addLog('⚠️ CSS anti-publicité non trouvé', 'warn');
+                }
+                
+                // Actualiser les stats après le test
+                setTimeout(refreshStats, 1000);
+                
+            } catch (error) {
+                addLog(`Erreur lors du test: ${error.message}`, 'error');
+            }
+        }
+
+        // Actualiser les statistiques
+        function refreshStats() {
+            addLog('Actualisation des statistiques...', 'info');
+            loadStats();
+        }
+
+        // Effacer les logs
+        function clearLogs() {
+            document.getElementById('log-container').innerHTML = 
+                '<div class="log-entry log-info">[INFO] Logs effacés</div>';
+        }
+
+        // Toggle auto-refresh
+        function toggleAutoRefresh() {
+            const statusElement = document.getElementById('auto-status');
+            
+            if (isAutoRefresh) {
+                clearInterval(autoRefreshInterval);
+                isAutoRefresh = false;
+                statusElement.textContent = 'OFF';
+                addLog('Auto-refresh désactivé', 'info');
+            } else {
+                autoRefreshInterval = setInterval(loadStats, 5000);
+                isAutoRefresh = true;
+                statusElement.textContent = 'ON';
+                addLog('Auto-refresh activé (5s)', 'info');
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            addLog('Interface de test prête. Proxy sur port 8089', 'success');
+        });
+    </script>
+</body>
+</html>

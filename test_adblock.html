@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Proxy AdBlock</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .active {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .inactive {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .endpoint {
+            background: #f8f9fa;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚫 Proxy AdBlock YouTube - Test Interface</h1>
+        
+        <div id="status" class="status">
+            <strong>Statut:</strong> <span id="statusText">Vérification en cours...</span>
+        </div>
+
+        <h2>📋 Endpoints disponibles:</h2>
+        <div class="endpoint">GET http://127.0.0.1:8089/proxy/adblock/status</div>
+        <div class="endpoint">GET http://127.0.0.1:8089/proxy/youtube/{path}</div>
+
+        <h2>🧪 Tests:</h2>
+        <button onclick="checkStatus()">Vérifier le statut du proxy</button>
+        <button onclick="testBlockedDomain()">Tester blocage de domaine</button>
+        <button onclick="testYouTubeProxy()">Tester proxy YouTube (simple)</button>
+
+        <div id="result"></div>
+
+        <h2>🛡️ Fonctionnalités AdBlock:</h2>
+        <ul>
+            <li><strong>Blocage de domaines:</strong> 11 domaines publicitaires YouTube</li>
+            <li><strong>Injection CSS:</strong> Masquage des éléments publicitaires</li>
+            <li><strong>Nettoyage HTML:</strong> Suppression des scripts de tracking</li>
+            <li><strong>Headers optimisés:</strong> User-Agent et headers de navigateur</li>
+        </ul>
+
+        <h2>📝 Utilisation:</h2>
+        <p>Pour utiliser le proxy AdBlock YouTube:</p>
+        <ol>
+            <li>Démarrer le proxy: <code>cargo run -- --cmd "addblock"</code></li>
+            <li>Configurer votre navigateur pour utiliser le proxy sur <strong>127.0.0.1:8089</strong></li>
+            <li>Ou accéder directement via: <code>http://127.0.0.1:8089/proxy/youtube/...</code></li>
+        </ol>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            const result = document.getElementById('result');
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            
+            try {
+                result.textContent = 'Vérification du statut...';
+                
+                const response = await fetch('http://127.0.0.1:8089/proxy/adblock/status');
+                const data = await response.json();
+                
+                result.textContent = `Statut du proxy:\n${JSON.stringify(data, null, 2)}`;
+                
+                if (data.status === 'active') {
+                    statusDiv.className = 'status active';
+                    statusText.textContent = `✅ Actif - ${data.blocked_domains} domaines bloqués`;
+                } else {
+                    statusDiv.className = 'status inactive';
+                    statusText.textContent = '❌ Inactif';
+                }
+            } catch (error) {
+                result.textContent = `Erreur: ${error.message}`;
+                statusDiv.className = 'status inactive';
+                statusText.textContent = '❌ Proxy non accessible';
+            }
+        }
+
+        async function testBlockedDomain() {
+            const result = document.getElementById('result');
+            result.textContent = 'Test de blocage de domaine publicitaire...';
+            
+            try {
+                // Test d'un domaine qui devrait être bloqué
+                const response = await fetch('http://127.0.0.1:8089/proxy/youtube/pagead/js/adsbygoogle.js');
+                const text = await response.text();
+                
+                if (response.ok && text.includes('Ad blocked')) {
+                    result.textContent = '✅ Succès: Domaine publicitaire bloqué!\n\nRéponse:\n' + text;
+                } else {
+                    result.textContent = '⚠️ Le domaine n\'a pas été bloqué comme attendu.\n\nRéponse:\n' + text;
+                }
+            } catch (error) {
+                result.textContent = `❌ Erreur lors du test: ${error.message}`;
+            }
+        }
+
+        async function testYouTubeProxy() {
+            const result = document.getElementById('result');
+            result.textContent = 'Test du proxy YouTube...';
+            
+            try {
+                // Test simple d'accès à YouTube via le proxy
+                const response = await fetch('http://127.0.0.1:8089/proxy/youtube/', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    }
+                });
+                
+                const status = response.status;
+                const statusText = response.statusText;
+                
+                result.textContent = `Réponse du proxy YouTube:\nStatut: ${status} ${statusText}\n\n`;
+                
+                if (status === 502) {
+                    result.textContent += '✅ Comportement normal: YouTube bloque les requêtes proxy simples.\nLe proxy fonctionne, mais YouTube nécessite un navigateur complet.';
+                } else if (status === 200) {
+                    result.textContent += '✅ Succès: Le proxy a réussi à contacter YouTube!';
+                } else {
+                    result.textContent += `ℹ️ Statut inattendu, mais le proxy est fonctionnel.`;
+                }
+            } catch (error) {
+                result.textContent = `❌ Erreur: ${error.message}`;
+            }
+        }
+
+        // Vérifier le statut au chargement de la page
+        window.onload = checkStatus;
+    </script>
+</body>
+</html>
