@@ -47,7 +47,9 @@ impl SslConfig {
             .with_single_cert(cert_chain, rustls::pki_types::PrivateKeyDer::Pkcs8(key))?;
 
         Ok(config)
-    }    /// Génère un certificat auto-signé avec rcgen
+    }    
+    
+    /// Génère un certificat auto-signé avec rcgen
     fn generate_self_signed_cert(cert_path: &str, key_path: &str) -> Result<(), Box<dyn std::error::Error>> {
         // Génération du certificat avec rcgen
         let subject_alt_names = vec![
