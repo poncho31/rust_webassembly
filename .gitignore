@@ -5,6 +5,12 @@ Cargo.lock
 *.rs.bk
 *.pdb
 
+# SSL Certificates (auto-generated, should not be committed)
+certs/
+*.pem
+*.key
+*.crt
+
 # WebAssembly
 /client/static/pkg/
 *.wasm
@@ -55,4 +61,7 @@ yarn-error.log*
 .cargo/*
 !.cargo/
 !.cargo/config.toml
-storage/
+
+storage/*
+!storage/
+!storage/.gitignore

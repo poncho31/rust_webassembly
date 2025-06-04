@@ -7,9 +7,12 @@ use actix_cors::Cors;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 mod controllers;
+mod ssl_config;
+
 use crate::controllers::ping_controller;
 use crate::controllers::form_controller;
 use crate::controllers::weather_controller;
+use crate::ssl_config::SslConfig;
 
 
 
@@ -18,12 +21,17 @@ use crate::controllers::weather_controller;
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init();
-    
-    // Configuration centralisée du serveur web
+      // Configuration centralisée du serveur web
     let config = create_web_server_config();
     let (static_path, pkg_path, favicon_path) = get_static_path().expect("Failed to initialize static paths");
-      // Affichage des informations du serveur
+    
+    // Affichage des informations du serveur
     print_server_info(&config);
+
+    // Configuration SSL si activée
+    if config.ssl_enabled {
+        SslConfig::print_ssl_info();
+    }
 
     // Copier les valeurs nécessaires avant le move
     let host = config.host.clone();
@@ -31,7 +39,8 @@ async fn main() -> std::io::Result<()> {
     let workers = config.workers;
     let max_connections = config.max_connections;
     let keep_alive = config.keep_alive;
-    let client_timeout = config.client_timeout;    let http_server_instance = HttpServer::new(move || {
+    let client_timeout = config.client_timeout;
+    let ssl_enabled = config.ssl_enabled;let http_server_instance = HttpServer::new(move || {
         let cors = configure_cors(&config);
         
         // Application de base avec tous les middlewares essentiels
@@ -116,10 +125,25 @@ async fn main() -> std::io::Result<()> {
                 }))
             }))    })
     .workers(workers)
-    .max_connections(max_connections)    .keep_alive(keep_alive)
-    .client_request_timeout(client_timeout);
-    
-    let http_server = http_server_instance.bind((host, port))?;
+    .max_connections(max_connections)
+    .keep_alive(keep_alive)
+    .client_request_timeout(client_timeout);    // Configuration SSL conditionnelle
+    let http_server = if ssl_enabled {
+        match SslConfig::create_ssl_acceptor() {
+            Ok(ssl_config) => {
+                println!("🔒 Serveur HTTPS démarré sur https://{}:{}", host, port);
+                http_server_instance.bind_rustls_0_22((host, port), ssl_config)?
+            },
+            Err(e) => {
+                eprintln!("❌ Erreur SSL: {}. Démarrage en HTTP...", e);
+                println!("🔓 Serveur HTTP démarré sur http://{}:{}", host, port);
+                http_server_instance.bind((host, port))?
+            }
+        }
+    } else {
+        println!("🔓 Serveur HTTP démarré sur http://{}:{}", host, port);
+        http_server_instance.bind((host, port))?
+    };
     
     http_server.run().await
 }
