@@ -1,17 +1,21 @@
 // Import necessary dependencies
-use actix_web::{HttpResponse, Error};
+use actix_web::{web, HttpResponse, Error};
 use actix_multipart::Multipart;
 use futures::StreamExt;
-use core::HttpSendResponse;
+use core::{HttpSendResponse, DatabaseRepository};
+use sqlx::PgPool;
 use std::collections::HashMap;
 use server::extract_form::{extract_form_field, save_uploaded_file};
 use server::models::form_response::FormResponse;
 use serde_json::to_value;
-use tokio::time::{sleep, Duration};  // Add this import at the top
+use tokio::time::{sleep, Duration};
 
 /// Handles POST requests with multipart form data
 /// Processes both file uploads and form fields
-pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
+pub async fn post(
+    mut payload: Multipart,
+    db_pool: web::Data<PgPool>
+) -> Result<HttpResponse, Error> {
     // Store form fields and file information
     let mut form_data = HashMap::new();
     let mut files_info = Vec::new();
@@ -46,6 +50,22 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
         }
     }
 
+    // Créer le repository pour la base de données
+    let repository = DatabaseRepository::new(db_pool.get_ref().clone());
+    
+    // Tentative de sauvegarde en base de données
+    let database_result = match repository.upsert_user(&form_data, &files_info).await {
+        Ok(form_data_saved) => {
+            println!("User saved/updated successfully: {:?}", form_data_saved);
+            Some(format!("User {} successfully saved to database", 
+                form_data_saved.login.as_deref().unwrap_or("unknown")))
+        },
+        Err(e) => {
+            println!("Database error: {}", e);
+            Some(format!("Database error: {}", e))
+        }
+    };
+
     // Prepare response data combining form fields and file information
     let form_response = FormResponse {
         form_fields: form_data,
@@ -53,7 +73,12 @@ pub async fn post(mut payload: Multipart) -> Result<HttpResponse, Error> {
     };
 
     // Create message first, before consuming form_response
-    let message = create_response_message(&form_response.form_fields, &form_response.files);
+    let mut message = create_response_message(&form_response.form_fields, &form_response.files);
+    
+    // Ajouter le résultat de la base de données au message
+    if let Some(db_message) = database_result {
+        message.push_str(&format!("<br><strong>Database:</strong> {}", db_message));
+    }
 
     // Then convert form_response to serde_json::Value
     let data = to_value(form_response).unwrap();

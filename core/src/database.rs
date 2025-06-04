@@ -1,6 +1,7 @@
-use sqlx::{postgres::PgPoolOptions, PgPool, Pool, Postgres};
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use anyhow::Error;
 use std::env;
+use crate::database_repository::DatabaseRepository;
 
 pub async fn create_database() -> Result<(), Error> {
     let pg_host     = env::var("PG_HOST").expect("PG_HOST must be set");
@@ -42,14 +43,15 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
 
     println!("Connecting to database...");
     
-    for i in 1..=3 {
-        match PgPoolOptions::new()
+    for i in 1..=3 {            match PgPoolOptions::new()
             .max_connections(5)
             .connect(&database_url)
             .await {
                 Ok(pool) => {
                     if let Ok(_) = sqlx::query("SELECT 1").execute(&pool).await {
-                        if let Err(e) = create_tables(&pool).await {
+                        // Utiliser le repository pour initialiser les tables
+                        let repository = DatabaseRepository::new(pool.clone());
+                        if let Err(e) = repository.init_tables().await {
                             println!("Warning: Could not create tables: {}", e);
                         }
                         println!("Database connection successful!");
@@ -64,22 +66,5 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
                     }
                 }
             }
-    }
-
-    Err(Error::msg("Could not connect to database after 3 attempts"))
-}
-
-async fn create_tables(pool: &PgPool) -> Result<(), Error> {
-    sqlx::query(
-        "CREATE TABLE IF NOT EXISTS users (
-            id UUID PRIMARY KEY,
-            name TEXT NOT NULL,
-            email TEXT NOT NULL UNIQUE
-        )"
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| Error::msg(format!("Failed to create tables: {}", e)))?;
-
-    Ok(())
+    }    Err(Error::msg("Could not connect to database after 3 attempts"))
 }

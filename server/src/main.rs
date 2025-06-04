@@ -5,6 +5,7 @@ use dotenv::dotenv;
 use std::env;
 use actix_cors::Cors;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use sqlx::PgPool;
 
 mod controllers;
 mod ssl_config;
@@ -13,6 +14,7 @@ use crate::controllers::ping_controller;
 use crate::controllers::form_controller;
 use crate::controllers::weather_controller;
 use crate::ssl_config::SslConfig;
+use core::{init_db, create_database};
 
 
 
@@ -188,6 +190,24 @@ async fn start_full_web_server() -> std::io::Result<()> {
         SslConfig::print_ssl_info();
     }
 
+    // Initialisation de la base de données
+    println!("🗄️ Initializing database connection...");
+    let db_pool = match init_database().await {
+        Ok(pool) => {
+            println!("✅ Database connection established successfully");
+            pool
+        },
+        Err(e) => {
+            println!("⚠️ Warning: Could not connect to database: {}", e);
+            println!("⚠️ Server will continue without database functionality");
+            // Créer un pool vide ou utiliser une option
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::ConnectionRefused,
+                format!("Database connection failed: {}", e)
+            ));
+        }
+    };
+
     // Copier les valeurs nécessaires avant le move
     let host = config.host.clone();
     let port = config.port;
@@ -195,13 +215,12 @@ async fn start_full_web_server() -> std::io::Result<()> {
     let max_connections = config.max_connections;
     let keep_alive = config.keep_alive;
     let client_timeout = config.client_timeout;
-    let ssl_enabled = config.ssl_enabled;
-
-    let http_server_instance = HttpServer::new(move || {
+    let ssl_enabled = config.ssl_enabled;    let http_server_instance = HttpServer::new(move || {
         let cors = configure_cors(&config);
         
         // Application de base avec tous les middlewares essentiels
         let app = App::new()
+            .app_data(web::Data::new(db_pool.clone()))
             .wrap(cors)
             .wrap(middleware::Compress::default())
             .wrap(middleware::DefaultHeaders::new()
@@ -467,4 +486,23 @@ fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf,
     }
 
     Ok((static_path, pkg_path, favicon_path))
+}
+
+/// Initialise la connexion à la base de données
+async fn init_database() -> Result<PgPool, Box<dyn std::error::Error>> {
+    println!("Creating database if it doesn't exist...");
+    if let Err(e) = create_database().await {
+        println!("Warning: Could not ensure database exists: {}", e);
+    }
+
+    println!("Initializing database connection pool...");
+    match init_db().await {
+        Ok(pool) => {
+            println!("Database pool created successfully");
+            Ok(pool)
+        },        Err(e) => {
+            println!("Failed to initialize database: {}", e);
+            Err(format!("Database initialization failed: {}", e).into())
+        }
+    }
 }
