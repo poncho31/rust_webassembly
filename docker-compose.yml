@@ -1,0 +1,78 @@
+﻿services:
+  # Base de données PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: webassembly_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PG_DATABASE}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./storage/database:/var/lib/postgresql/data/pgdata
+    ports:
+      - "${PG_PORT_DOCKER}:${PG_PORT}"
+    networks:
+      - webassembly_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Application WebAssembly
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webassembly_app
+    restart: unless-stopped
+    environment:
+      # Configuration serveur Docker (variables fixes)
+      SERVER_HOST: ${SERVER_HOST_DOCKER}
+      SERVER_PORT: ${SERVER_PORT_DOCKER}
+      SERVER_WORKERS: ${SERVER_WORKERS_DOCKER}
+      
+      # Configuration base de données Docker (variables fixes)
+      PG_HOST: ${PG_HOST_DOCKER}
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_DATABASE: ${PG_DATABASE}
+      PG_PORT: ${PG_PORT}
+      DATABASE_URL: ${DATABASE_URL_DOCKER}
+      
+      # Configuration CORS Docker (variable fixe)
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN_DOCKER}
+      
+      # Autres configurations
+      ENVIRONMENT: "production"
+      RUST_LOG: "info"
+      MAX_CONNECTIONS: ${MAX_CONNECTIONS}
+      SSL_ENABLED: ${SSL_ENABLED}
+      COMPRESSION_ENABLED: ${COMPRESSION_ENABLED}
+      SECURITY_HEADERS: ${SECURITY_HEADERS}
+      FILE_CACHING: ${FILE_CACHING}
+      REQUEST_LOGGING: ${REQUEST_LOGGING}
+      HTML_INDEX: ${HTML_INDEX}
+    ports:
+      - "${SERVER_PORT_DOCKER}:${SERVER_PORT_DOCKER}"   # HTTPS (port principal 8090)
+    volumes:
+      - ./storage/files:/app/storage/files
+      - ./storage/logs:/app/storage/logs
+      - ./certs:/app/certs   # Montage des certificats SSL
+    networks:
+      - webassembly_network
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -k https://localhost:${SERVER_PORT_DOCKER}/api/ping || curl -f http://localhost:8089/api/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  webassembly_network:
+    driver: bridge
+    name: webassembly_network
