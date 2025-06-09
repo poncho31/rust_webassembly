@@ -1,6 +1,5 @@
 mod client_tools;
 mod client_request;
-mod client_periodics;
 pub mod form;
 pub mod modal;
 pub mod refresh;
@@ -58,15 +57,21 @@ pub fn run() -> Result<(), JsValue> {
         FieldOption::new("autre", "Autre"),
     ];
 
-    field_configs.insert("sexe", FieldConfig::new(FieldType::Select)
-        .with_options(sexe_options)
-        .required());
+    field_configs.insert(
+        "sexe", 
+        FieldConfig::new(FieldType::Select)
+                    .with_options(sexe_options)
+                    .required()
+    );
 
     // Configuration pour les autres champs
-    field_configs.insert("login", FieldConfig::new(FieldType::Text)
-        .with_placeholder("Votre identifiant")
-        .with_title("Votre identifiant")
-        .required());
+    field_configs.insert(
+        "login", 
+        FieldConfig::new(FieldType::Text)
+                    .with_placeholder("Votre identifiant")
+                    .with_title("Votre identifiant")
+                    .required()
+    );
         
     field_configs.insert("info", FieldConfig::new(FieldType::TextArea)
         .with_placeholder("Informations supplémentaires (optionnel)"));

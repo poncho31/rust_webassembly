@@ -197,7 +197,9 @@ impl FormField {
             label: None,
             config: Some(config),
         })
-    }    /// Populate select field with options
+    }   
+    
+    /// Populate select field with options
     fn populate_select_options(element: &Element, options: &[FieldOption]) -> Result<(), JsValue> {
         // Clear existing options
         element.set_inner_html("");
@@ -221,7 +223,9 @@ impl FormField {
         }
 
         Ok(())
-    }    /// Create a FormField with validation setup
+    }    
+    
+    /// Create a FormField with validation setup
     pub fn with_validation(
         id: String,
         field_type: FieldType,
@@ -249,7 +253,9 @@ impl FormField {
             label: None,
             config: None,
         })
-    }pub fn with_label<S: Into<String>>(mut self, label: S) -> Self {
+    }
+    
+    pub fn with_label<S: Into<String>>(mut self, label: S) -> Self {
         self.label = Some(label.into());
         self
     }
@@ -261,9 +267,13 @@ impl FormField {
 
     pub fn field_type(&self) -> &FieldType {
         &self.field_type
-    }    pub fn element(&self) -> &Element {
+    }    
+    
+    pub fn element(&self) -> &Element {
         &self.element
-    }    /// Get the element as HtmlInputElement if it is one
+    }    
+    
+    /// Get the element as HtmlInputElement if it is one
     pub fn input(&self) -> Option<HtmlInputElement> {
         self.element.dyn_ref::<HtmlInputElement>().cloned()
     }
@@ -278,7 +288,9 @@ impl FormField {
 
     pub fn config(&self) -> Option<&FieldConfig> {
         self.config.as_ref()
-    }    /// Get the current value of the field
+    }    
+    
+    /// Get the current value of the field
     pub fn value(&self) -> String {
         // Try to get value property using reflection
         if let Ok(value) = js_sys::Reflect::get(&self.element, &JsValue::from_str("value")) {
@@ -304,7 +316,9 @@ impl FormField {
             }
         }
         Ok(())
-    }/// Check if the field has files (for file inputs)
+    }
+    
+    /// Check if the field has files (for file inputs)
     pub fn has_files(&self) -> bool {
         self.field_type.supports_files() && 
         self.input().map_or(false, |input| input.files().map_or(false, |files| files.length() > 0))
@@ -314,48 +328,6 @@ impl FormField {
     pub fn files(&self) -> Option<web_sys::FileList> {
         if self.field_type.supports_files() {
             self.input().and_then(|input| input.files())
-        } else {
-            None
-        }
-    }
-
-    /// Validate the field's current value
-    pub fn is_valid(&self) -> bool {
-        if self.required && self.value().trim().is_empty() {
-            return false;
-        }
-
-        match &self.field_type {
-            FieldType::Email => {
-                let value = self.value();
-                !value.is_empty() && value.contains('@') && value.contains('.')
-            }
-            FieldType::Number => {
-                let value = self.value();
-                value.is_empty() || value.parse::<f64>().is_ok()
-            }
-            FieldType::Url => {
-                let value = self.value();
-                value.is_empty() || value.starts_with("http")
-            }
-            _ => true,
-        }
-    }
-
-    /// Get validation error message if field is invalid
-    pub fn validation_error(&self) -> Option<String> {
-        if !self.is_valid() {
-            match &self.field_type {
-                FieldType::Email => Some(format!("{} must be a valid email address", 
-                    self.label.as_deref().unwrap_or(&self.id))),
-                FieldType::Number => Some(format!("{} must be a valid number", 
-                    self.label.as_deref().unwrap_or(&self.id))),
-                FieldType::Url => Some(format!("{} must be a valid URL", 
-                    self.label.as_deref().unwrap_or(&self.id))),
-                _ if self.required => Some(format!("{} is required", 
-                    self.label.as_deref().unwrap_or(&self.id))),
-                _ => None,
-            }
         } else {
             None
         }

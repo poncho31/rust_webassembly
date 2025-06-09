@@ -1,6 +1,7 @@
 //! Form validation module - consolidated validation system
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use crate::form::FieldType;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationRule {
@@ -68,11 +69,59 @@ impl ValidationRule {
             max_value: Some(max_val),
             ..Default::default()
         }
-    }
-
-    pub fn with_message<S: Into<String>>(mut self, message: S) -> Self {
+    }    pub fn with_message<S: Into<String>>(mut self, message: S) -> Self {
         self.custom_message = Some(message.into());
         self
+    }
+
+    /// Create a default validation rule based on field type
+    pub fn from_field_type(field_type: &FieldType, required: bool) -> Self {
+        match field_type {
+            FieldType::Email => Self {
+                required,
+                min_length: Some(5),
+                max_length: Some(255),
+                pattern: Some("email".to_string()),
+                ..Default::default()
+            },
+            FieldType::Number => Self {
+                required,
+                ..Default::default()
+            },
+            FieldType::Url => Self {
+                required,
+                pattern: Some("url".to_string()),
+                ..Default::default()
+            },
+            FieldType::Text | FieldType::Password | FieldType::TextArea => Self {
+                required,
+                min_length: if required { Some(1) } else { None },
+                max_length: Some(500),
+                ..Default::default()
+            },
+            FieldType::Tel => Self {
+                required,
+                min_length: Some(10),
+                max_length: Some(15),
+                ..Default::default()
+            },
+            FieldType::Date => Self {
+                required,
+                ..Default::default()
+            },
+            FieldType::File => Self {
+                required,
+                ..Default::default()
+            },
+            FieldType::Select | FieldType::Radio => Self {
+                required,
+                ..Default::default()
+            },
+            FieldType::Checkbox => Self {
+                required: false, // Checkboxes are usually optional
+                ..Default::default()
+            },
+        }
     }
 
     pub fn validate(&self, value: &str, field_name: &str) -> Result<(), String> {
@@ -183,10 +232,30 @@ impl FormValidator {
         } else {
             Ok(())
         }
+    }    pub fn has_rule(&self, field: &str) -> bool {
+        self.rules.contains_key(field)
     }
 
-    pub fn has_rule(&self, field: &str) -> bool {
-        self.rules.contains_key(field)
+    /// Create a validator from form fields with automatic default rules
+    pub fn from_fields(fields: &[crate::form::FormField]) -> Self {
+        let mut validator = Self::new();
+        
+        for field in fields {
+            let rule = ValidationRule::from_field_type(field.field_type(), field.is_required());
+            validator.rules.insert(field.id().to_string(), rule);
+        }
+        
+        validator
+    }
+
+    /// Add or update a rule for a specific field
+    pub fn set_rule<S: Into<String>>(&mut self, field: S, rule: ValidationRule) {
+        self.rules.insert(field.into(), rule);
+    }
+
+    /// Remove a rule for a specific field
+    pub fn remove_rule(&mut self, field: &str) -> Option<ValidationRule> {
+        self.rules.remove(field)
     }
 }
 

@@ -173,25 +173,25 @@ impl FormHandler {
 
         // Submit form with retry logic
         self.submit_with_retry(form_data).await
-    }
-
-    /// Validate the form using configured validator or built-in validation
+    }    /// Validate the form using configured validator or automatic default validation
     fn validate_form(&self) -> Result<(), Vec<String>> {
-        if let Some(validator) = &self.validator {
-            let form_values = FormProcessor::extract_values(&self.fields);
-            let result = validator.validate(&form_values);
-            
-            if result.is_valid {
-                Ok(())
-            } else {
-                let errors = result.errors.into_iter()
-                    .map(|err| err.message)
-                    .collect();
-                Err(errors)
-            }
+        let validator = if let Some(validator) = &self.validator {
+            validator.clone()
         } else {
-            // Use built-in field validation
-            FormProcessor::validate_fields(&self.fields)
+            // Create automatic validator from form fields
+            FormValidator::from_fields(&self.fields)
+        };
+        
+        let form_values = FormProcessor::extract_values(&self.fields);
+        let result = validator.validate(&form_values);
+        
+        if result.is_valid {
+            Ok(())
+        } else {
+            let errors = result.errors.into_iter()
+                .map(|err| err.message)
+                .collect();
+            Err(errors)
         }
     }
 
@@ -202,7 +202,12 @@ impl FormHandler {
 
         // Focus on first error if configured
         if self.config.auto_focus_error {
-            FormProcessor::focus_first_error(&self.fields)?;
+            let validator = if let Some(validator) = &self.validator {
+                validator.clone()
+            } else {
+                FormValidator::from_fields(&self.fields)
+            };
+            FormProcessor::focus_first_error_with_validator(&self.fields, &validator)?;
         }
 
         Ok(())

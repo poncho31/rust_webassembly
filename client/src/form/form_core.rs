@@ -151,9 +151,7 @@ impl FormProcessor {
         }
 
         Ok((form_data, debug_data))
-    }
-
-    /// Extract form values as a HashMap for validation
+    }    /// Extract form values as a HashMap for validation
     pub fn extract_values(fields: &[FormField]) -> HashMap<String, String> {
         fields.iter()
             .filter(|field| !field.field_type().supports_files())
@@ -161,24 +159,17 @@ impl FormProcessor {
             .collect()
     }
 
-    /// Validate all form fields
-    pub fn validate_fields(fields: &[FormField]) -> Result<(), Vec<String>> {
-        let errors: Vec<String> = fields.iter()
-            .filter_map(|field| field.validation_error())
-            .collect();
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
-    }
-
-    /// Focus on the first invalid field
-    pub fn focus_first_error(fields: &[FormField]) -> Result<(), JsValue> {
-        for field in fields {
-            if !field.is_valid() {
-                return field.focus();
+    /// Focus on the first invalid field using validator
+    pub fn focus_first_error_with_validator(fields: &[FormField], validator: &crate::form::FormValidator) -> Result<(), JsValue> {
+        let form_values = Self::extract_values(fields);
+        let result = validator.validate(&form_values);
+        
+        if !result.is_valid {
+            // Find the first field with an error and focus on it
+            for error in &result.errors {
+                if let Some(field) = fields.iter().find(|f| f.id() == error.field) {
+                    return field.focus();
+                }
             }
         }
         Ok(())
