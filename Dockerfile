@@ -1,6 +1,6 @@
 # Build stage pour WebAssembly
-FROM rust:1.82 AS wasm-builder
-RUN cargo install wasm-pack
+FROM rust:1.83-alpine AS wasm-builder
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig && cargo install wasm-pack
 WORKDIR /app
 COPY client/ ./client/
 COPY core/ ./core/
@@ -8,34 +8,21 @@ WORKDIR /app/client
 RUN wasm-pack build --target web --out-dir pkg
 
 # Build stage pour le serveur Rust
-FROM rust:1.82 AS rust-builder
+FROM rust:1.83-alpine AS rust-builder
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig
 WORKDIR /app
 COPY . .
 COPY --from=wasm-builder /app/client/pkg ./client/pkg
-RUN cargo build --release
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # Runtime stage
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copier le binaire
-COPY --from=rust-builder /app/target/release/server .
-
-# Copier les fichiers statiques et WebAssembly
-COPY --from=rust-builder /app/client/static ./client/static
-COPY --from=rust-builder /app/client/pkg ./client/pkg
-
-# Copier les certificats si présents
-COPY certs/ ./certs/
-
-# Variables d'environnement par défaut (surchargées par docker-compose)
-ENV SERVER_HOST=0.0.0.0
-ENV SERVER_PORT=8088
+FROM scratch
+COPY --from=rust-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=rust-builder /app/target/x86_64-unknown-linux-musl/release/server /server
+COPY --from=rust-builder /app/client/static /client/static
+COPY --from=rust-builder /app/client/pkg /client/pkg
+COPY certs/ /certs/
 
 EXPOSE 8088
 
-CMD ["./server"]
+CMD ["/server"]
