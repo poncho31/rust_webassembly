@@ -15,9 +15,7 @@ form/
 ├── form_field.rs           # Définition des champs (types, propriétés)
 ├── form_handler.rs         # Gestionnaire principal des formulaires
 ├── form_core.rs            # Logique centrale (traitement, erreurs)
-├── form_cache.rs           # Optimisation et mise en cache DOM
 ├── form_validation.rs      # Système de validation complet
-├── form_utilities.rs       # Fonctions utilitaires et helpers
 └── README_FR.md           # Ce fichier de documentation
 ```
 
