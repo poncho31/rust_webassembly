@@ -1,8 +1,102 @@
+//! Core form processing and error handling functionality
+
 use web_sys::{FormData, File};
 use serde_json::{Value, json};
 use crate::form::{FormField, FormConfig};
-use wasm_bindgen::JsValue;
+use wasm_bindgen::prelude::*;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::fmt;
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+/// Application-specific error types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum FormError {
+    ValidationError(String),
+    NetworkError(String),
+    FileError(String),
+    ConfigurationError(String),
+    DOMError(String),
+    Unknown(String),
+}
+
+impl fmt::Display for FormError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FormError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
+            FormError::NetworkError(msg) => write!(f, "Network Error: {}", msg),
+            FormError::FileError(msg) => write!(f, "File Error: {}", msg),
+            FormError::ConfigurationError(msg) => write!(f, "Configuration Error: {}", msg),
+            FormError::DOMError(msg) => write!(f, "DOM Error: {}", msg),
+            FormError::Unknown(msg) => write!(f, "Unknown Error: {}", msg),
+        }
+    }
+}
+
+impl From<JsValue> for FormError {
+    fn from(js_val: JsValue) -> Self {
+        let error_msg = js_val
+            .as_string()
+            .unwrap_or_else(|| format!("{:?}", js_val));
+        
+        // Try to categorize the error based on the message
+        if error_msg.contains("network") || error_msg.contains("fetch") {
+            FormError::NetworkError(error_msg)
+        } else if error_msg.contains("validation") {
+            FormError::ValidationError(error_msg)
+        } else if error_msg.contains("file") {
+            FormError::FileError(error_msg)
+        } else if error_msg.contains("DOM") || error_msg.contains("element") {
+            FormError::DOMError(error_msg)
+        } else {
+            FormError::Unknown(error_msg)
+        }
+    }
+}
+
+impl Into<JsValue> for FormError {
+    fn into(self) -> JsValue {
+        JsValue::from_str(&self.to_string())
+    }
+}
+
+/// Result type for form operations
+pub type FormResult<T> = Result<T, FormError>;
+
+/// Error context for better error reporting
+#[derive(Debug, Clone)]
+pub struct ErrorContext {
+    pub operation: String,
+    pub field: Option<String>,
+    pub additional_info: Vec<String>,
+}
+
+impl ErrorContext {
+    pub fn new(operation: &str) -> Self {
+        Self {
+            operation: operation.to_string(),
+            field: None,
+            additional_info: Vec::new(),
+        }
+    }
+
+    pub fn with_field(mut self, field: &str) -> Self {
+        self.field = Some(field.to_string());
+        self
+    }
+
+    pub fn with_info<S: Into<String>>(mut self, info: S) -> Self {
+        self.additional_info.push(info.into());
+        self
+    }
+}
+
+// ============================================================================
+// FORM PROCESSING
+// ============================================================================
 
 /// Handles form data processing and serialization
 pub struct FormProcessor;
@@ -15,7 +109,7 @@ impl FormProcessor {
     ) -> Result<(FormData, Value), JsValue> {
         let form_data = FormData::new()?;
         let mut debug_data = json!({});
-        let mut total_file_size = 0u64;
+        let mut _total_file_size = 0u64;
 
         for field in fields {
             match field.field_type() {
@@ -28,7 +122,7 @@ impl FormProcessor {
                                 // Check file size if limit is set
                                 if let Some(max_size) = config.max_file_size {
                                     let file_size = file.size() as u64;
-                                    total_file_size += file_size;
+                                    _total_file_size += file_size;
                                     
                                     if file_size > max_size {
                                         return Err(JsValue::from_str(&format!(
@@ -116,35 +210,57 @@ impl FormProcessor {
             if !field.field_type().supports_files() {
                 let value = field.value();
                 if !value.is_empty() {
-                    data[field.id()] = match field.field_type() {
-                        crate::form::FieldType::Number => {
-                            value.parse::<f64>()
-                                .map(|n| json!(n))
-                                .unwrap_or_else(|_| json!(value))
-                        }                        crate::form::FieldType::Checkbox => {
-                            if let Some(input) = field.input() {
-                                json!(input.checked())
-                            } else {
-                                json!(false)
-                            }
-                        }
-                        _ => json!(value)
-                    };
+                    data[field.id()] = json!(value);
                 }
             } else if field.has_files() {
                 // For files, we'll include metadata only
                 if let Some(files) = field.files() {
-                    let mut file_names = Vec::new();
+                    let mut files_info = Vec::new();
                     for i in 0..files.length() {
                         if let Some(file) = files.item(i) {
-                            file_names.push(file.name());
+                            files_info.push(Self::file_info(&file));
                         }
                     }
-                    data[field.id()] = json!(file_names);
+                    data[field.id()] = json!(files_info);
                 }
             }
         }
         
         Ok(data)
     }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/// Handle JavaScript errors with context
+pub fn handle_js_error(js_error: JsValue, _context: ErrorContext) -> FormError {
+    let form_error = FormError::from(js_error);
+    form_error
+}
+
+/// Create validation error
+pub fn validation_error(message: &str, field: Option<&str>) -> FormError {
+    let msg = if let Some(field) = field {
+        format!("{} (field: {})", message, field)
+    } else {
+        message.to_string()
+    };
+    FormError::ValidationError(msg)
+}
+
+/// Create network error
+pub fn network_error(message: &str) -> FormError {
+    FormError::NetworkError(message.to_string())
+}
+
+/// Create file error
+pub fn file_error(message: &str) -> FormError {
+    FormError::FileError(message.to_string())
+}
+
+/// Create DOM error
+pub fn dom_error(message: &str) -> FormError {
+    FormError::DOMError(message.to_string())
 }

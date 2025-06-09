@@ -32,6 +32,7 @@ pub struct FieldConfig {
     pub options: Option<Vec<FieldOption>>,
     pub default_value: Option<String>,
     pub placeholder: Option<String>,
+    pub title: Option<String>,
     pub required: bool,
 }
 
@@ -42,6 +43,7 @@ impl FieldConfig {
             options: None,
             default_value: None,
             placeholder: None,
+            title: None,
             required: false,
         }
     }
@@ -58,6 +60,11 @@ impl FieldConfig {
 
     pub fn with_placeholder<S: Into<String>>(mut self, placeholder: S) -> Self {
         self.placeholder = Some(placeholder.into());
+        self
+    }
+
+    pub fn with_title<S: Into<String>>(mut self, title: S) -> Self {
+        self.title = Some(title.into());
         self
     }
 
@@ -158,9 +165,16 @@ impl FormField {
 
         if config.required {
             element.set_attribute("required", "")?;
-        }        // Set placeholder if provided (for input elements)
+        }        
+        
+        // Set placeholder if provided (for input elements)
         if let Some(placeholder) = &config.placeholder {
             element.set_attribute("placeholder", placeholder)?;
+        }
+
+        // Set title if provided (for input elements)
+        if let Some(title) = &config.title {
+            element.set_attribute("title", title)?;
         }
 
         // Set default value if provided

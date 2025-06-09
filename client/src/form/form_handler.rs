@@ -10,7 +10,7 @@ use crate::{
     client_request,
     modal::Modal,
     form::{FormField, FormConfig, FormProcessor, FieldType, FieldConfig},
-    validation::FormValidator
+    form::form_validation::FormValidator
 };
 
 /// Main form handler that orchestrates form behavior
@@ -24,45 +24,69 @@ pub struct FormHandler {
     validator: Option<FormValidator>,
 }
 
+/// Builder for FormHandler to support flexible construction with optional parameters
+pub struct FormHandlerBuilder {
+    form_id: String,
+    endpoint: String,
+    config: FormConfig,
+    field_specs: Option<Vec<(String, FieldType)>>,
+    field_configs: Option<std::collections::HashMap<String, FieldConfig>>,
+}
+
+impl FormHandlerBuilder {
+    /// Add field specifications to the builder
+    pub fn with_field_specs(mut self, specs: &[(&str, FieldType)]) -> Self {
+        self.field_specs = Some(specs.iter().map(|(id, field_type)| (id.to_string(), field_type.clone())).collect());
+        self
+    }
+
+    /// Add field configurations to the builder
+    pub fn with_field_configs(mut self, configs: &std::collections::HashMap<&str, FieldConfig>) -> Self {
+        self.field_configs = Some(configs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect());
+        self
+    }
+
+    /// Build the FormHandler
+    pub fn build(self) -> Result<FormHandler, JsValue> {
+        let field_specs_ref: Option<Vec<(&str, FieldType)>> = self.field_specs.as_ref().map(|specs| {
+            specs.iter().map(|(id, field_type)| (id.as_str(), field_type.clone())).collect()
+        });
+
+        let field_configs_ref: Option<std::collections::HashMap<&str, FieldConfig>> = self.field_configs.as_ref().map(|configs| {
+            configs.iter().map(|(k, v)| (k.as_str(), v.clone())).collect()
+        });
+
+        FormHandler::create(
+            &self.form_id,
+            &self.endpoint,
+            field_specs_ref.as_ref().map(|v| v.as_slice()),
+            field_configs_ref.as_ref(),
+            self.config,
+        )
+    }
+}
+
 impl FormHandler {
-    /// Create a new form handler
+    /// Create a new form handler with optional field specifications or configurations
     pub fn new(
         form_id: &str,
         endpoint: &str,
-        field_specs: Option<&[(&str, FieldType)]>,
         config: FormConfig,
-    ) -> Result<Self, JsValue> {
-        let document = window()
-            .ok_or_else(|| JsValue::from_str("Window not available"))?
-            .document()
-            .ok_or_else(|| JsValue::from_str("Document not available"))?;
-
-        let form = document
-            .get_element_by_id(form_id)
-            .ok_or_else(|| JsValue::from_str(&format!("Form '{}' not found", form_id)))?;
-
-        let fields = Self::create_form_fields(&document, field_specs)?;
-        
-        let submit_button = document
-            .query_selector(&format!("button[form='{}']", form_id))?
-            .or_else(|| form.query_selector("button[type='submit']").ok().flatten())
-            .or_else(|| form.query_selector("input[type='submit']").ok().flatten())
-            .ok_or_else(|| JsValue::from_str("Submit button not found"))?
-            .dyn_into::<HtmlButtonElement>()?;        Ok(Self {
+    ) -> FormHandlerBuilder {
+        FormHandlerBuilder {
             form_id: form_id.to_string(),
-            fields,
-            config,
-            modal: Modal::new()?,
-            submit_button,
             endpoint: endpoint.to_string(),
-            validator: None,
-        })
+            config,
+            field_specs: None,
+            field_configs: None,
+        }
     }
 
-    /// Create a new form handler with field configurations
-    pub fn new_with_field_configs(
+    /// Internal constructor that creates the FormHandler
+    fn create(
         form_id: &str,
         endpoint: &str,
+        field_specs: Option<&[(&str, FieldType)]>,
         field_configs: Option<&std::collections::HashMap<&str, FieldConfig>>,
         config: FormConfig,
     ) -> Result<Self, JsValue> {
@@ -75,7 +99,11 @@ impl FormHandler {
             .get_element_by_id(form_id)
             .ok_or_else(|| JsValue::from_str(&format!("Form '{}' not found", form_id)))?;
 
-        let fields = Self::create_form_fields_with_config(&document, field_configs)?;
+        let fields = if let Some(configs) = field_configs {
+            Self::create_form_fields_with_config(&document, Some(configs))?
+        } else {
+            Self::create_form_fields(&document, field_specs)?
+        };
         
         let submit_button = document
             .query_selector(&format!("button[form='{}']", form_id))?
@@ -84,11 +112,11 @@ impl FormHandler {
             .ok_or_else(|| JsValue::from_str("Submit button not found"))?
             .dyn_into::<HtmlButtonElement>()?;
 
-        let modal = Modal::new()?;        Ok(Self {
+        Ok(Self {
             form_id: form_id.to_string(),
             fields,
             config,
-            modal,
+            modal: Modal::new()?,
             submit_button,
             endpoint: endpoint.to_string(),
             validator: None,
@@ -104,7 +132,8 @@ impl FormHandler {
     /// Initialize the form with event listeners
     pub fn initialize(self) -> Result<(), JsValue> {
         let handler = Rc::new(RefCell::new(self));
-        let handler_clone = Rc::clone(&handler);        let document = window().unwrap().document().unwrap();
+        let handler_clone = Rc::clone(&handler);        
+        let document = window().unwrap().document().unwrap();
         let form = document
             .get_element_by_id(&handler.borrow().form_id)
             .ok_or_else(|| JsValue::from_str(&format!("Form '{}' not found", handler.borrow().form_id)))?;
@@ -347,6 +376,12 @@ pub fn form_init_with_config(
     field_specs: Option<&[(&str, FieldType)]>,
     config: FormConfig,
 ) -> Result<(), JsValue> {
-    let handler = FormHandler::new(form_id, endpoint, field_specs, config)?;
+    let mut builder = FormHandler::new(form_id, endpoint, config);
+    
+    if let Some(specs) = field_specs {
+        builder = builder.with_field_specs(specs);
+    }
+    
+    let handler = builder.build()?;
     handler.initialize()
 }

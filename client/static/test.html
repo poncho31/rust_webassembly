@@ -227,12 +227,14 @@ let field_specs = &[
     ("age", FieldType::Number),
     ("country", FieldType::Select),
     ("phone", FieldType::Tel),
-    ("website", FieldType::Url),
+    ("website", FieldType::Url),    
     ("newsletter", FieldType::Checkbox),
     ("terms", FieldType::Checkbox),
 ];
 
-FormHandler::new("registrationForm", "/api/register", Some(field_specs), config)?
+FormHandler::new("registrationForm", "/api/register", config)
+    .with_field_specs(&field_specs)
+    .build()?
     .with_validator(validator)
     .initialize()?;
         </div>

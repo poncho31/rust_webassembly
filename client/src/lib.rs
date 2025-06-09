@@ -2,19 +2,17 @@ mod client_tools;
 mod client_request;
 mod client_periodics;
 pub mod form;
-pub mod client_form_improved;
-mod validation;
 pub mod modal;
 pub mod refresh;
 
 use wasm_bindgen::prelude::*;
 use form::{
-    handler::FormHandler,
-    config::FormConfig,
-    field::{FieldType, FieldConfig, FieldOption},
+    FormHandler,
+    FormConfig,
+    FieldType, FieldConfig, FieldOption,
+    FormValidator, ValidationRule,
+    form_init_with_config
 };
-use client_form_improved::{form_init_with_config};
-use validation::{FormValidator, ValidationRule};
 use client_tools::log;
 use refresh::{RefreshConfig, RefreshScheduler};
 use refresh::config::DataTransform;
@@ -38,7 +36,9 @@ pub fn run() -> Result<(), JsValue> {
         .success_message("✅ Formulaire soumis avec succès!")
         .error_message("❌ Erreur lors de la soumission")
         .max_file_size(10 * 1024 * 1024) // 10MB max pour les fichiers
-        .build();    // Création du validateur avec règles personnalisées
+        .build();    
+        
+    // Création du validateur avec règles personnalisées
     let validator = FormValidator::new()
         .add_rule("login", ValidationRule::text(3, 20))
         .add_rule("firstname", ValidationRule::text(2, 50)) 
@@ -57,6 +57,7 @@ pub fn run() -> Result<(), JsValue> {
         FieldOption::new("femme", "Femme"),
         FieldOption::new("autre", "Autre"),
     ];
+
     field_configs.insert("sexe", FieldConfig::new(FieldType::Select)
         .with_options(sexe_options)
         .required());
@@ -64,6 +65,7 @@ pub fn run() -> Result<(), JsValue> {
     // Configuration pour les autres champs
     field_configs.insert("login", FieldConfig::new(FieldType::Text)
         .with_placeholder("Votre identifiant")
+        .with_title("Votre identifiant")
         .required());
         
     field_configs.insert("info", FieldConfig::new(FieldType::TextArea)
@@ -87,36 +89,42 @@ pub fn run() -> Result<(), JsValue> {
     field_configs.insert("files", FieldConfig::new(FieldType::File));
       field_configs.insert("age", FieldConfig::new(FieldType::Number)
         .with_placeholder("Âge")
-        .required());
-
-    // Initialisation du formulaire principal avec la nouvelle API et configurations de champs
-    match FormHandler::new_with_field_configs("form", "/api/form", Some(&field_configs), main_form_config) {
-        Ok(handler) => {
-            match handler.with_validator(validator).initialize() {
-                Ok(_) => log("✅ Formulaire principal initialisé avec succès avec configurations de champs"),
-                Err(e) => {
-                    log(&format!("❌ Erreur lors de l'initialisation du formulaire principal: {:?}", e));
-                    return Err(e);
+        .required());    // Initialisation du formulaire principal avec la nouvelle API et configurations de champs
+    
+    match FormHandler::new("form", "/api/form", main_form_config)
+        .with_field_configs(&field_configs)
+        .build() {
+            Ok(handler) => {
+                match handler.with_validator(validator).initialize() {
+                    Ok(_) => log("✅ Formulaire principal initialisé avec succès avec configurations de champs"),
+                    Err(e) => {
+                        log(&format!("❌ Erreur lors de l'initialisation du formulaire principal: {:?}", e));
+                        return Err(e);
+                    }
                 }
+            },
+            Err(e) => {
+                log(&format!("❌ Erreur lors de la création du handler: {:?}", e));
+                return Err(e);
             }
-        },
-        Err(e) => {
-            log(&format!("❌ Erreur lors de la création du handler: {:?}", e));
-            return Err(e);
-        }
-    }// Configuration simple pour le bouton ping
+    }
+    
+    // Configuration simple pour le bouton ping
     let ping_config = FormConfig::builder()
         .validation(false)
         .loading(true)
         .success_message("🏓 Ping envoyé!")
         .build();    // Initialisation du formulaire ping avec la nouvelle API simplifiée
+
     match form_init_with_config("button_ping", "/api/ping", None, ping_config) {
         Ok(_) => log("✅ Bouton ping initialisé avec succès"),
         Err(e) => {
             log(&format!("❌ Erreur lors de l'initialisation du bouton ping: {:?}", e));
             return Err(e);
         }
-    }    log("# End script - Enhanced Form System with Auto-Refresh Ready");
+    }    
+    
+    log("# End script - Enhanced Form System with Auto-Refresh Ready");
     Ok(())
 }
 

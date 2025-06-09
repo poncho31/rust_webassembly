@@ -84,7 +84,7 @@ pub async fn post(
     let data = to_value(form_response).unwrap();
 
     // Add 500ms delay
-    sleep(Duration::from_millis(500)).await;
+    // sleep(Duration::from_millis(500)).await;
     
     // Return successful response with status, message and processed data
     Ok(HttpResponse::Ok().json(HttpSendResponse {

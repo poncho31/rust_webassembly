@@ -1,14 +1,18 @@
-// Form module - Better organization
-pub mod config;
-pub mod field;
-pub mod handler;
-pub mod processor;
-pub mod errors;
-pub mod cache;
-pub mod examples;
+// Form module - Refactored and consolidated organization
+pub mod form_config;
+pub mod form_field;
+pub mod form_handler;
+pub mod form_core;
+pub mod form_cache;
+pub mod form_utilities;
+pub mod form_validation;
 
-pub use config::FormConfig;
-pub use field::{FormField, FieldType, FieldConfig, FieldOption};
-pub use handler::{FormHandler, form_init, form_init_with_config};
-pub use processor::FormProcessor;
-pub use errors::{FormError, FormResult, ErrorContext};
+// Core exports
+pub use form_config::FormConfig;
+pub use form_field::{FormField, FieldType, FieldConfig, FieldOption};
+pub use form_handler::{FormHandler, form_init, form_init_with_config};
+pub use form_core::{FormProcessor, FormError, FormResult, ErrorContext};
+pub use form_validation::{FormValidator, ValidationRule};
+
+// Utility exports
+pub use form_utilities::*;
