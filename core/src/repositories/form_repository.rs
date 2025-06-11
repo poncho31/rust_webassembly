@@ -13,19 +13,18 @@ impl FormRepository {
     }
 
     /// Créer la table form_data si elle n'existe pas
-    pub async fn create_table_if_not_exists(&self) -> Result<()> {
-        let query = r#"
+    pub async fn create_table_if_not_exists(&self) -> Result<()> {        let query = r#"
             CREATE TABLE IF NOT EXISTS form_data (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 login TEXT,
-                birthday DATE,
+                birthday TEXT,
                 firstname TEXT,
                 lastname TEXT,
                 sexe TEXT,
                 age INTEGER,
                 info TEXT,
                 email TEXT,
-                files_info JSONB,
+                files_info TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
         "#;
@@ -37,15 +36,8 @@ impl FormRepository {
 
         println!("✅ Table form_data créée/vérifiée avec succès");
         Ok(())
-    }
-
-    /// Insérer de nouvelles données de formulaire
+    }    /// Insérer de nouvelles données de formulaire
     pub async fn insert_form_data(&self, form_data: NewFormData) -> Result<Uuid> {
-        let files_json = form_data.files_info
-            .as_ref()
-            .map(|files| serde_json::to_value(files).unwrap_or(serde_json::Value::Null))
-            .unwrap_or(serde_json::Value::Null);
-
         let query = r#"
             INSERT INTO form_data (login, birthday, firstname, lastname, sexe, age, info, email, files_info)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -61,7 +53,7 @@ impl FormRepository {
             .bind(&form_data.age)
             .bind(&form_data.info)
             .bind(&form_data.email)
-            .bind(&files_json)
+            .bind(&form_data.files_info)
             .fetch_one(&self.pool)
             .await
             .map_err(|e| Error::msg(format!("Failed to insert form data: {}", e)))?;
@@ -83,12 +75,9 @@ impl FormRepository {
         let rows = sqlx::query(query)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;
-
-        let mut form_data_list = Vec::new();
+            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;        let mut form_data_list = Vec::new();
         for row in rows {
-            let files_info: Option<Vec<String>> = row.get::<Option<serde_json::Value>, _>("files_info")
-                .and_then(|v| serde_json::from_value(v).ok());
+            let files_info: Option<String> = row.get("files_info");
 
             let form_data = FormData {
                 id: row.get("id"),
@@ -122,11 +111,8 @@ impl FormRepository {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| Error::msg(format!("Failed to fetch form data by id: {}", e)))?;
-
-        if let Some(row) = row {
-            let files_info: Option<Vec<String>> = row.get::<Option<serde_json::Value>, _>("files_info")
-                .and_then(|v| serde_json::from_value(v).ok());
+            .map_err(|e| Error::msg(format!("Failed to fetch form data by id: {}", e)))?;        if let Some(row) = row {
+            let files_info: Option<String> = row.get("files_info");
 
             let form_data = FormData {
                 id: row.get("id"),

@@ -2,13 +2,14 @@
 use actix_web::{web, HttpResponse, Error};
 use actix_multipart::Multipart;
 use futures::StreamExt;
-use core::{HttpSendResponse, DatabaseRepository};
+use core::{HttpSendResponse, DatabaseRepository, Table};
+use core::repositories::form_repository::FormRepository;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use server::extract_form::{extract_form_field, save_uploaded_file};
 use server::models::form_response::FormResponse;
-use serde_json::to_value;
-use tokio::time::{sleep, Duration};
+use serde_json::{to_value, value, Value};
+// use tokio::time::{sleep, Duration};
 
 /// Handles POST requests with multipart form data
 /// Processes both file uploads and form fields
@@ -64,61 +65,77 @@ pub async fn post(
             println!("Database error: {}", e);
             Some(format!("Database error: {}", e))
         }
-    };
-
-    // Prepare response data combining form fields and file information
-    let form_response = FormResponse {
-        form_fields: form_data,
-        files: files_info,
-    };
-
-    // Create message first, before consuming form_response
-    let mut message = create_response_message(&form_response.form_fields, &form_response.files);
+    };    
     
-    // Ajouter le résultat de la base de données au message
-    if let Some(db_message) = database_result {
-        message.push_str(&format!("<br><strong>Database:</strong> {}", db_message));
+    // Prepare response data combining form fields, files and database result
+    let mut response_data = serde_json::Map::new();
+
+    if let Some(ref db_msg) = database_result {
+        response_data.insert("Message".to_string(), Value::String(db_msg.clone()));
     }
 
-    // Then convert form_response to serde_json::Value
-    let data = to_value(form_response).unwrap();
+    if !files_info.is_empty() {
+        response_data.insert("Fichiers".to_string(),       to_value(files_info.clone()).unwrap());
+    }
 
-    // Add 500ms delay
-    // sleep(Duration::from_millis(500)).await;
+    response_data.insert("Données".to_string(), to_value(form_data.clone()).unwrap());
     
+
+    
+
+    
+    let data = Value::Object(response_data);
+    
+    // Generate HTML table using client's table generator
+    let message: String = Table::create(&data, "response-table").to_html();
+
+    // Also create the original FormResponse for backward compatibility
+    let form_response = FormResponse {
+        form_fields: form_data.clone(),
+        files: files_info.clone(),
+    };
+    let form_response_data = to_value(form_response).unwrap();
+
     // Return successful response with status, message and processed data
     Ok(HttpResponse::Ok().json(HttpSendResponse {
         status: 200,
         message: Some(message),
-        data: Some(data),
+        data: Some(form_response_data),
     }))
 }
 
-
-pub fn create_response_message(form_data: &HashMap<String, String>, files_info: &Vec<String>) -> String {
-    let fields_html = if form_data.is_empty() {
-        "<tr><td>Fields</td><td>No fields</td></tr>".to_string()
-    } else {
-        form_data.iter()
-            .map(|(key, value)| format!("<tr><td>{}</td><td>{}</td></tr>", key, value))
-            .collect::<Vec<String>>()
-            .join("\n")
-    };
-
-    let files_html = if files_info.is_empty() {
-        "<tr><td>Files</td><td>No files</td></tr>".to_string()
-    } else {
-        format!("<tr><td>Files</td><td>{}</td></tr>",
-            files_info.iter()
-                .map(|file| file.to_string())
-                .collect::<Vec<String>>()
-                .join("<br>")
-        )
-    };
-
-    format!(
-        "<table class='response-table'><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>{}{}</tbody></table>",
-        fields_html,
-        files_html
-    )
+/// Récupère toutes les données de la table form_data
+pub async fn get_form_data(
+    db_pool: web::Data<PgPool>
+) -> Result<HttpResponse, Error> {
+    // Créer le repository pour la base de données
+    let repository = FormRepository::new(db_pool.get_ref().clone());
+      // Récupérer toutes les données
+    match repository.get_all_form_data().await {
+        Ok(form_data_list) => {
+            // Convertir en JSON pour Table::create() - wrap dans un objet avec une clé
+            let wrapped_data = serde_json::json!({
+                "form_data": form_data_list
+            });
+            
+            // Générer le HTML de la table avec les outils existants
+            let table_html = Table::create(&wrapped_data, "form-data-table").to_html();
+            
+            // Retourner le HTML directement
+            Ok(HttpResponse::Ok()
+                .content_type("text/html")
+                .body(table_html))
+        },
+        Err(e) => {
+            println!("Database error: {}", e);
+            let error_table = Table::create(&serde_json::json!({
+                "error": "Failed to fetch form data",
+                "details": e.to_string()
+            }), "error-table").to_html();
+            
+            Ok(HttpResponse::InternalServerError()
+                .content_type("text/html")
+                .body(error_table))
+        }
+    }
 }

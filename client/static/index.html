@@ -103,15 +103,21 @@
                     <h3>Code Statut HTTP</h3>
                     <p>Mise à jour toutes les 10 secondes</p>
                     <div class="refresh-value" id="auto-counter">En attente...</div>
-                </div>
-
-                <div class="refresh-card">
+                </div>                <div class="refresh-card">
                     <h3>Message HTML</h3>
                     <p>Mise à jour toutes les minutes</p>
                     <div class="refresh-value" id="auto-message">En attente...</div>
                 </div>
             </div>
-        </div>        
+        </div>
+
+        <!-- Section de données de formulaire -->
+        <div class="table-container">
+            <h2>📊 Données du Formulaire</h2>                
+            <div id="form-data-table">
+                <p>Chargement des données...</p>
+            </div>
+        </div>
         
         
         <script type="module">
@@ -146,10 +152,9 @@
                         }
                     });
                 }
-            }
-
-            // Initialiser après le chargement du DOM
-            document.addEventListener('DOMContentLoaded', setupFileDisplay);
+            }            // Initialiser après le chargement du DOM
+            document.addEventListener('DOMContentLoaded', setupFileDisplay);            // Table form_data gérée entièrement par WebAssembly Rust
+            // (rafraîchissement automatique configuré dans lib.rs)
 
             init();
         </script>

@@ -47,3 +47,25 @@ pub async fn post_form(endpoint: &str, form_data: &web_sys::FormData) -> Result<
     let response_data: HttpSendResponse = serde_wasm_bindgen::from_value(json)?;
     Ok(response_data)
 }
+
+/// Fetch text/HTML data from a URL
+pub async fn fetch_text(url: &str) -> Result<String, JsValue> {
+    let window = window().unwrap();
+    let opts = RequestInit::new();
+    opts.set_method("GET");
+    opts.set_mode(RequestMode::Cors);
+
+    let request = Request::new_with_str_and_init(url, &opts)?;
+    request.headers().set("Accept", "text/html,application/xhtml+xml,text/plain")?;
+    request.headers().set("Cache-Control", "no-cache")?;
+
+    let resp = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let response: web_sys::Response = resp.dyn_into()?;
+    
+    if !response.ok() {
+        return Err(JsValue::from_str(&format!("HTTP error! status: {}", response.status())));
+    }
+    
+    let text = JsFuture::from(response.text()?).await?;
+    Ok(text.as_string().unwrap_or_default())
+}

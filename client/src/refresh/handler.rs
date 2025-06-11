@@ -1,5 +1,5 @@
 use crate::refresh::config::{RefreshConfig, ContentType};
-use crate::client_request::fetch_json;
+use crate::client_request::{fetch_json, fetch_text};
 use crate::client_tools::log;
 use web_sys::{HtmlElement, HtmlInputElement};
 use wasm_bindgen::JsCast;
@@ -27,23 +27,42 @@ impl RefreshHandler {
             }
         } else {
             self.config.endpoint.clone()
-        };
-
-        // Utiliser client_request pour faire l'appel API
-        match fetch_json::<Value>(&url).await {
-            Ok(response) => {
-                if let Err(e) = self.update_dom(&response).await {
-                    if self.config.show_errors {
-                        self.show_error(&format!("DOM update error: {}", e));
+        };        // Utiliser client_request pour faire l'appel API
+        // Si c'est du HTML sans champ JSON, utiliser fetch_text
+        if matches!(self.config.content_type, ContentType::Html) && self.config.json_field.is_none() {
+            match fetch_text(&url).await {
+                Ok(html_content) => {
+                    if let Err(e) = self.update_dom_with_html(&html_content).await {
+                        if self.config.show_errors {
+                            self.show_error(&format!("DOM update error: {}", e));
+                        }
+                        log(&format!("❌ DOM update failed for {}: {}", self.config.id, e));
                     }
-                    log(&format!("❌ DOM update failed for {}: {}", self.config.id, e));
+                }
+                Err(e) => {
+                    if self.config.show_errors {
+                        self.show_error(&format!("API error: {:?}", e));
+                    }
+                    log(&format!("❌ Refresh failed for {}: {:?}", self.config.id, e));
                 }
             }
-            Err(e) => {
-                if self.config.show_errors {
-                    self.show_error(&format!("API error: {:?}", e));
+        } else {
+            // Utiliser fetch_json pour les autres cas
+            match fetch_json::<Value>(&url).await {
+                Ok(response) => {
+                    if let Err(e) = self.update_dom(&response).await {
+                        if self.config.show_errors {
+                            self.show_error(&format!("DOM update error: {}", e));
+                        }
+                        log(&format!("❌ DOM update failed for {}: {}", self.config.id, e));
+                    }
                 }
-                log(&format!("❌ Refresh failed for {}: {:?}", self.config.id, e));
+                Err(e) => {
+                    if self.config.show_errors {
+                        self.show_error(&format!("API error: {:?}", e));
+                    }
+                    log(&format!("❌ Refresh failed for {}: {:?}", self.config.id, e));
+                }
             }
         }
     }
@@ -203,7 +222,40 @@ impl RefreshHandler {
             result
         } else {
             content.to_string()
-        }
+        }    }
+
+    /// Mettre à jour le DOM avec du contenu HTML direct
+    async fn update_dom_with_html(&self, html_content: &str) -> Result<(), String> {
+        let window = web_sys::window().ok_or("No window")?;
+        let document = window.document().ok_or("No document")?;
+        
+        let element = document
+            .query_selector(&self.config.target_selector)
+            .map_err(|_| "Query selector failed")?
+            .ok_or_else(|| format!("Element not found: {}", self.config.target_selector))?;
+
+        // Appliquer les transformations si configurées
+        let content = if let Some(transform) = &self.config.transform {
+            let mut result = html_content.to_string();
+            if let Some(prefix) = &transform.prefix {
+                result = format!("{}{}", prefix, result);
+            }
+            if let Some(suffix) = &transform.suffix {
+                result = format!("{}{}", result, suffix);
+            }
+            result
+        } else {
+            html_content.to_string()
+        };
+
+        // Mettre à jour l'élément avec le HTML
+        let html_element = element
+            .dyn_into::<HtmlElement>()
+            .map_err(|_| "Element is not an HTML element")?;
+        html_element.set_inner_html(&content);
+
+        log(&format!("✅ Updated {} with HTML content ({} chars)", self.config.target_selector, content.len()));
+        Ok(())
     }
 
     /// Afficher une erreur dans l'interface

@@ -158,9 +158,9 @@ fn show_server_status() {
 
 /// Affiche toutes les routes disponibles
 fn show_available_routes() {
-    println!("🔗 === ROUTES DISPONIBLES ===");
-    println!("📡 API Endpoints:");
+    println!("🔗 === ROUTES DISPONIBLES ===");    println!("📡 API Endpoints:");
     println!("   • POST /api/form              - Soumission de formulaire");
+    println!("   • GET  /api/form_data         - Récupération des données form_data");
     println!("   • GET  /api/ping              - Test de santé du serveur");
     println!("   • POST /api/ping              - Test de santé du serveur");
     println!("   • GET  /api/weather/temperature - Données météo");
@@ -246,9 +246,9 @@ async fn start_full_web_server() -> std::io::Result<()> {
             *  ██████  ██    ██ ██  ██    ██    █████    ███████
             *  ██   ██ ██    ██ ██  ██    ██    ██            ██
             *  ██   ██  ██████   ████     ██    ███████  ██████
-            */
-            .service(web::scope("/api")
+            */            .service(web::scope("/api")
                 .route("/form", web::post().to(form_controller::post))
+                .route("/form_data", web::get().to(form_controller::get_form_data))
                 .route("/ping", web::post().to(ping_controller::get))
                 .route("/ping", web::get().to(ping_controller::get))
                 .route("/weather/temperature", web::get().to(weather_controller::get_temperature))
@@ -446,20 +446,20 @@ fn print_server_info(config: &WebServerConfig) {
     
     println!("🌐 ===== WEB SERVER CONFIGURATION =====");
     println!("🚀 Server starting on {}://{}:{}", protocol, config.host, config.port);
-    println!("🏗️  Environment: {}", environment.to_uppercase());
+    println!("🏗️ Environment: {}", environment.to_uppercase());
     println!("👷 Workers: {}", config.workers);
     println!("🔗 Max Connections: {}", config.max_connections);
-    println!("⏱️  Keep Alive: {:?}", config.keep_alive);
+    println!("⏱️ Keep Alive: {:?}", config.keep_alive);
     println!("🔒 SSL Enabled: {}", config.ssl_enabled);
     println!("📦 Compression: {}", config.compression_enabled);
-    println!("🛡️  Security Headers: {}", config.security_headers_enabled);
+    println!("🛡️ Security Headers: {}", config.security_headers_enabled);
     println!("🌍 CORS Permissive: {}", config.cors_permissive);
     println!("💾 File Caching: {}", config.file_caching);
     println!("📝 Request Logging: {}", config.request_logging);
-    println!("");
-    println!("🔧 API Endpoints:");
+    println!("");    println!("🔧 API Endpoints:");
     println!("   • GET/POST /api/ping - Server health check");
     println!("   • POST /api/form - Form submission");
+    println!("   • GET /api/form_data - Retrieve form_data table");
     println!("   • GET /api/weather/temperature - Weather data");
     println!("   • GET /health - Health check endpoint");
     println!("=====================================");
@@ -467,10 +467,22 @@ fn print_server_info(config: &WebServerConfig) {
 
 
 fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
-    let static_path  = std::env::current_dir()?.join("client").join("static");
+    // Déterminer le répertoire racine du projet
+    let current_dir = std::env::current_dir()?;
+    let project_root = if current_dir.ends_with("server") {
+        // Si on est dans le dossier server, remonter au parent
+        current_dir.parent().unwrap().to_path_buf()
+    } else {
+        // Sinon, on est déjà à la racine du projet
+        current_dir
+    };
+    
+    let static_path  = project_root.join("client").join("static");
     let pkg_path     = static_path.join("pkg");
     let favicon_path = static_path.join("images").join("icons").join("favicon.ico");
     
+    println!("Current dir: {:?}", std::env::current_dir()?);
+    println!("Project root: {:?}", project_root);
     println!("Static files path: {:?}", static_path);
     println!("favicon_path files path: {:?}", favicon_path);
     println!("WASM pkg path: {:?}", pkg_path);

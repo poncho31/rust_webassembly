@@ -163,9 +163,7 @@ async fn init_auto_refresh() {
         prefix: Some("Code de statut: ".to_string()),
         suffix: None,
         format: Some("number".to_string()),
-    });
-
-    // Configuration pour un message HTML
+    });    // Configuration pour un message HTML
     let message_config = RefreshConfig::new_html(
         "message",
         "/api/ping",
@@ -176,13 +174,22 @@ async fn init_auto_refresh() {
         prefix: Some("<strong>".to_string()),
         suffix: Some("</strong>".to_string()),
         format: None,
-    });    // Démarrer tous les rafraîchissements
+    });    // Configuration pour la table form_data - Rafraîchissement automatique
+    let form_data_table_config = RefreshConfig::new_html(
+        "form_data_table",
+        "/api/form_data",
+        15,  // Toutes les 15 secondes
+        "#form-data-table",
+        None,  // Pas de champ JSON, on prend tout le HTML
+    );// Démarrer tous les rafraîchissements
+
     RefreshScheduler::new()
         .add_refresh(temperature_config)
         .add_refresh(counter_config)
         .add_refresh(message_config)
+        .add_refresh(form_data_table_config)
         .start_all();
 
-    log("✅ Système de rafraîchissement automatique démarré");
+    log("✅ Système de rafraîchissement automatique démarré (température, statut, message, table form_data)");
 }
 
