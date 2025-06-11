@@ -11,7 +11,7 @@ mod controllers;
 mod ssl_config;
 
 use crate::controllers::ping_controller;
-use crate::controllers::form_controller;
+use crate::controllers::index_controller;
 use crate::controllers::weather_controller;
 use crate::ssl_config::SslConfig;
 use core::{init_db, create_database};
@@ -246,9 +246,10 @@ async fn start_full_web_server() -> std::io::Result<()> {
             *  ██████  ██    ██ ██  ██    ██    █████    ███████
             *  ██   ██ ██    ██ ██  ██    ██    ██            ██
             *  ██   ██  ██████   ████     ██    ███████  ██████
-            */            .service(web::scope("/api")
-                .route("/form", web::post().to(form_controller::post))
-                .route("/form_data", web::get().to(form_controller::get_form_data))
+            */            
+            .service(web::scope("/api")
+                .route("/form", web::post().to(index_controller::post))
+                .route("/form_data", web::get().to(index_controller::get_form_data))
                 .route("/ping", web::post().to(ping_controller::get))
                 .route("/ping", web::get().to(ping_controller::get))
                 .route("/weather/temperature", web::get().to(weather_controller::get_temperature))
