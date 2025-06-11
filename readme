@@ -6,3 +6,10 @@
 
     #B. Docker : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build & docker-compose down & docker-compose up -d"
     # DOCKER LOGS STREAM : docker logs -f webassembly_app
+
+#3. Chemin pour création rapide d'un composant client / serveur :
+    - "lib.rs" : -Se comporte comme le JS et contient les interactions / affichages de données dans des éléments html
+               -sera compilé en wasm et sera importé dans le fichier index.html via client.js
+    - "index.html" : contient la structure de la page web, les appels aux fonctions du lib.rs (compilé dans client_bg.wasm) via client.js et les éléments html
+    - "main.rs"    : contient les routes qui applent des controllers spécifiques
+    - "*_controllers.rs" : contient les fonctions qui appellent les services
