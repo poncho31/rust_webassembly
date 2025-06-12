@@ -420,3 +420,9 @@ input[type="file"] {
 .refresh-btn:active {
     transform: translateY(1px);
 }
+
+
+.fixed-box{
+    max-height: 25em;
+    overflow-x: auto;
+}

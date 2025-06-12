@@ -14,7 +14,6 @@ use crate::controllers::ping_controller;
 use crate::controllers::index_controller;
 use crate::controllers::weather_controller;
 use crate::ssl_config::SslConfig;
-use core::{init_db};
 
 
 
@@ -192,7 +191,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
 
     // Initialisation de la base de données
     println!("🗄️ Initializing database connection...");
-    let db_pool = match init_database().await {
+    let db_pool = match core::init_db().await {
         Ok(pool) => {
             println!("✅ Database connection established successfully");
             pool
@@ -505,16 +504,3 @@ fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf,
     Ok((static_path, pkg_path, favicon_path))
 }
 
-/// Initialise la connexion à la base de données
-async fn init_database() -> Result<PgPool, Box<dyn std::error::Error>> {
-    println!("Initializing database connection pool...");
-    match init_db().await {
-        Ok(pool) => {
-            println!("Database pool created successfully");
-            Ok(pool)
-        },        Err(e) => {
-            println!("Failed to initialize database: {}", e);
-            Err(format!("Database initialization failed: {}", e).into())
-        }
-    }
-}

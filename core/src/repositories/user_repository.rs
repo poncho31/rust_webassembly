@@ -1,13 +1,55 @@
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Row, FromRow};
+use serde::{Serialize, Deserialize};
 use anyhow::{Error, Result};
-use uuid::Uuid;
 use time::OffsetDateTime;
-use crate::db_models::form_data::{FormData, NewFormData};
 use std::collections::HashMap;
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
+use crate::{repositories::_database_query::DatabaseQuery};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow)]
+pub struct User {
+    pub id: Uuid,
+    pub login: Option<String>,
+    pub birthday: Option<String>,
+    pub firstname: Option<String>,
+    pub lastname: Option<String>,
+    pub sexe: Option<String>,
+    pub age: Option<i32>,
+    pub info: Option<String>,
+    pub email: Option<String>,
+    pub files_info: Option<String>,
+    pub created_at: OffsetDateTime,
+}
 
 pub struct UserRepository {
     pool: PgPool,
 }
+
+impl User {
+    pub fn from_form_fields(
+        fields: &HashMap<String, String>,
+        files: &Vec<String>,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            
+            login: fields.get("login").cloned(),      // Utilisation de `cloned()` pour obtenir une Option<String> à partir de &String
+            birthday : fields.get("birthday").cloned(),
+            firstname: fields.get("firstname").cloned(),
+            lastname: fields.get("lastname").cloned(),
+            sexe: fields.get("sexe").cloned(),
+            age : fields.get("age").and_then(|age_str| age_str.parse::<i32>().ok()),
+            info: fields.get("info").cloned(),
+            email: fields.get("email").cloned(),
+            files_info: if files.is_empty() { None } else { Some(files.join(",")) },
+            created_at: OffsetDateTime::now_utc(),
+        }
+    }
+}
+
+
+
 
 impl UserRepository {
     pub fn new(pool: PgPool) -> Self {
@@ -15,9 +57,9 @@ impl UserRepository {
     }
 
     /// Vérifie si un utilisateur existe déjà par login
-    pub async fn user_exists_by_login(&self, login: &str) -> Result<bool> {
+    pub async fn user_exists(&self, login: &str) -> Result<bool> {
         let result = sqlx::query(
-            "SELECT COUNT(*) as count FROM form_data WHERE login = $1"
+            "SELECT COUNT(*) as count FROM users WHERE login = $1"
         )
         .bind(login)
         .fetch_one(&self.pool)
@@ -28,9 +70,9 @@ impl UserRepository {
     }
 
     /// Récupère un utilisateur par login
-    pub async fn get_user_by_login(&self, login: &str) -> Result<Option<FormData>> {
-        let result = sqlx::query_as::<_, FormData>(
-            "SELECT * FROM form_data WHERE login = $1 ORDER BY created_at DESC LIMIT 1"
+    pub async fn get_user(&self, login: &str) -> Result<Option<User>> {
+        let result = sqlx::query_as::<_, User>(
+            "SELECT * FROM users WHERE login = $1 ORDER BY created_at DESC LIMIT 1"
         )
         .bind(login)
         .fetch_optional(&self.pool)
@@ -40,128 +82,98 @@ impl UserRepository {
     }
 
     /// Crée un nouvel utilisateur
-    pub async fn create_user(&self, new_form_data: &NewFormData) -> Result<FormData> {
+    pub async fn create_user(&self, user: &User) -> Result<User> {
         let id = Uuid::new_v4();
         let created_at = OffsetDateTime::now_utc();
 
-        let form_data = sqlx::query_as::<_, FormData>(
-            "INSERT INTO form_data (id, login, birthday, firstname, lastname, sexe, age, info, email, files_info, created_at)
+        let users = sqlx::query_as::<_, User>(
+            "INSERT INTO users 
+                    (id, login, birthday, firstname, lastname, sexe, age, info, email, files_info, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              RETURNING *"
         )
         .bind(id)
-        .bind(&new_form_data.login)
-        .bind(&new_form_data.birthday)
-        .bind(&new_form_data.firstname)
-        .bind(&new_form_data.lastname)
-        .bind(&new_form_data.sexe)
-        .bind(new_form_data.age)
-        .bind(&new_form_data.info)
-        .bind(&new_form_data.email)
-        .bind(&new_form_data.files_info)
+        .bind(&user.login)
+        .bind(&user.birthday)
+        .bind(&user.firstname)
+        .bind(&user.lastname)
+        .bind(&user.sexe)
+        .bind(&user.age)
+        .bind(&user.info)
+        .bind(&user.email)
+        .bind(&user.files_info)
         .bind(created_at)
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(form_data)
+        Ok(users)
     }
 
     /// Met à jour un utilisateur existant
-    pub async fn update_user(&self, login: &str, new_form_data: &NewFormData) -> Result<FormData> {
-        let form_data = sqlx::query_as::<_, FormData>(
-            "UPDATE form_data 
+    pub async fn update_user(&self, login: &str, user: &User) -> Result<User> {
+        let users = sqlx::query_as::<_, User>(
+            "UPDATE users 
              SET birthday = $2, firstname = $3, lastname = $4, sexe = $5, age = $6, 
                  info = $7, email = $8, files_info = $9, created_at = $10
              WHERE login = $1
              RETURNING *"
         )
         .bind(login)
-        .bind(&new_form_data.birthday)
-        .bind(&new_form_data.firstname)
-        .bind(&new_form_data.lastname)
-        .bind(&new_form_data.sexe)
-        .bind(new_form_data.age)
-        .bind(&new_form_data.info)
-        .bind(&new_form_data.email)
-        .bind(&new_form_data.files_info)
+        .bind(&user.birthday)
+        .bind(&user.firstname)
+        .bind(&user.lastname)
+        .bind(&user.sexe)
+        .bind(&user.age)
+        .bind(&user.info)
+        .bind(&user.email)
+        .bind(&user.files_info)
         .bind(OffsetDateTime::now_utc())
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(form_data)
+        Ok(users)
     }
 
     /// Crée ou met à jour un utilisateur (méthode principale)
-    pub async fn upsert_user(&self, form_fields: &HashMap<String, String>, files: &Vec<String>) -> Result<FormData> {
-        let new_form_data = NewFormData::from_form_fields(form_fields, files);
+    pub async fn upsert_user(&self, form_fields: &HashMap<String, String>, files: &Vec<String>) -> Result<User> {
+        let user = User::from_form_fields(form_fields, files);
 
         // Vérifier si l'utilisateur a un login
-        let login = match &new_form_data.login {
+        let login = match &user.login {
             Some(l) if !l.is_empty() => l,
             _ => return Err(Error::msg("Login is required")),
         };
 
         // Vérifier si l'utilisateur existe déjà
-        if self.user_exists_by_login(login).await? {
+        if self.user_exists(login).await? {
             println!("User with login '{}' exists, updating...", login);
-            self.update_user(login, &new_form_data).await
+            self.update_user(login, &user).await
         } else {
             println!("Creating new user with login '{}'...", login);
-            self.create_user(&new_form_data).await
+            self.create_user(&user).await
         }
-    }
-
-    /// Initialise les tables nécessaires
-    pub async fn init_tables(&self) -> Result<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS form_data (
-                id UUID PRIMARY KEY,
-                login TEXT,
-                birthday TEXT,
-                firstname TEXT,
-                lastname TEXT,
-                sexe TEXT,
-                age INTEGER,
-                info TEXT,
-                email TEXT,
-                files_info TEXT,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )"
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Error::msg(format!("Failed to create form_data table: {}", e)))?;
-
-        // Créer un index sur login pour les recherches rapides
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_form_data_login ON form_data (login)"
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Error::msg(format!("Failed to create index: {}", e)))?;
-
-        println!("Database tables initialized successfully");
-        Ok(())
     }
 
 
     /// Récupérer toutes les données de formulaire
-    pub async fn get_all(&self) -> Result<Vec<FormData>> {
+    pub async fn get_all(&self) -> Result<Vec<User>> {
         let query = r#"
             SELECT id, login, birthday, firstname, lastname, sexe, age, info, email, 
                    files_info, created_at
-            FROM form_data 
+            FROM users 
             ORDER BY created_at DESC
         "#;
 
         let rows = sqlx::query(query)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;        let mut form_data_list = Vec::new();
+            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;        
+        
+        let mut users_list = Vec::new();
         for row in rows {
             let files_info: Option<String> = row.get("files_info");
 
-            let form_data = FormData {
+            let users = User {
                 id: row.get("id"),
                 login: row.get("login"),
                 birthday: row.get("birthday"),
@@ -174,15 +186,15 @@ impl UserRepository {
                 files_info,
                 created_at: row.get("created_at"),
             };
-            form_data_list.push(form_data);
+            users_list.push(users);
         }
 
-        Ok(form_data_list)
+        Ok(users_list)
     }
 
     /// Supprimer une donnée de formulaire par ID
     pub async fn delete_user(&self, id: Uuid) -> Result<bool> {
-        let query = "DELETE FROM form_data WHERE id = $1";
+        let query = "DELETE FROM users WHERE id = $1";
 
         let result = sqlx::query(query)
             .bind(id)
