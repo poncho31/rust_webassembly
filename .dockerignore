@@ -1,0 +1,39 @@
+# Ignorer les fichiers temporaires et caches pour un meilleur cache Docker
+target/
+.git/
+.gitignore
+*.md
+README.md
+.env*
+docker-compose.yml
+*.bat
+*.ps1
+
+# Ignorer les builds precedents
+client/pkg/
+client/static/pkg/.gitignore
+
+# Logs et temporaires
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database files (ne pas inclure dans l'image)
+database/pg_data/
+storage/logs/
+storage/backups/
+
+# Certs (geres separement)
+# certs/
+
+# Archives et backups
+*.zip
+*.tar.gz
+*.bak

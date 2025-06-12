@@ -36,7 +36,10 @@ impl FormRepository {
 
         println!("✅ Table form_data créée/vérifiée avec succès");
         Ok(())
-    }    /// Insérer de nouvelles données de formulaire
+    }    
+    
+    
+    /// Insérer de nouvelles données de formulaire
     pub async fn insert_form_data(&self, form_data: NewFormData) -> Result<Uuid> {
         let query = r#"
             INSERT INTO form_data (login, birthday, firstname, lastname, sexe, age, info, email, files_info)
@@ -102,7 +105,7 @@ impl FormRepository {
     pub async fn get_form_data_by_id(&self, id: Uuid) -> Result<Option<FormData>> {
         let query = r#"
             SELECT id, login, birthday, firstname, lastname, sexe, age, info, email, 
-                   files_info, created_at
+                   files_info, date(created_at) as created_at
             FROM form_data 
             WHERE id = $1
         "#;

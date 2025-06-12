@@ -10,7 +10,7 @@
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - ./storage/database:/var/lib/postgresql/data/pgdata
+      - ./database/pg_data:/var/lib/postgresql/data/pgdata
     ports:
       - "${PG_PORT_DOCKER}:${PG_PORT}"
     networks:
@@ -58,6 +58,7 @@
     ports:
       - "${SERVER_PORT_DOCKER}:${SERVER_PORT_DOCKER}"   # HTTPS (port principal 8090)
     volumes:
+      - ./database/migrations:/app/database/migrations
       - ./storage/files:/app/storage/files
       - ./storage/logs:/app/storage/logs
       - ./certs:/app/certs   # Montage des certificats SSL
