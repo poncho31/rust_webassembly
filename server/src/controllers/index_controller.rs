@@ -2,8 +2,7 @@
 use actix_web::{web, HttpResponse, Error};
 use actix_multipart::Multipart;
 use futures::StreamExt;
-use core::{HttpSendResponse, DatabaseRepository, Table};
-use core::repositories::form_repository::FormRepository;
+use core::{HttpSendResponse, UserRepository, Table};
 use sqlx::PgPool;
 use std::collections::HashMap;
 use server::extract_form::{extract_form_field, save_uploaded_file};
@@ -48,10 +47,8 @@ pub async fn post(
             // Skip fields without a name
             _ => continue,
         }
-    }
-
-    // Créer le repository pour la base de données
-    let repository = DatabaseRepository::new(db_pool.get_ref().clone());
+    }    // Créer le repository pour la base de données
+    let repository = UserRepository::new(db_pool.get_ref().clone());
     
     // Tentative de sauvegarde en base de données
     let database_result = match repository.upsert_user(&form_data, &files_info).await {
@@ -104,9 +101,9 @@ pub async fn get_form_data(
     db_pool: web::Data<PgPool>
 ) -> Result<HttpResponse, Error> {
     // Créer le repository pour la base de données
-    let repository = FormRepository::new(db_pool.get_ref().clone());
+    let user_repo: UserRepository = UserRepository::new(db_pool.get_ref().clone());
       // Récupérer toutes les données
-    match repository.get_all_form_data().await {
+    match user_repo.get_all().await {
         Ok(form_data_list) => {
             // Convertir en JSON pour Table::create() - wrap dans un objet avec une clé
             let wrapped_data = serde_json::json!({"form_data": form_data_list});

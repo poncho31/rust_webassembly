@@ -6,10 +6,10 @@ pub mod table;
 // Database modules only available with database feature
 #[cfg(feature = "database")]
 pub mod db_models;
+
 #[cfg(feature = "database")]
 pub mod database;
-#[cfg(feature = "database")]
-pub mod database_repository;
+
 #[cfg(feature = "database")]
 pub mod repositories;
 
@@ -22,9 +22,12 @@ pub use table::Table;
 // Database exports only available with database feature
 #[cfg(feature = "database")]
 pub use db_models::user::User;
+
 #[cfg(feature = "database")]
 pub use db_models::form_data::{FormData, NewFormData};
+
 #[cfg(feature = "database")]
 pub use database::{create_database, init_db};
+
 #[cfg(feature = "database")]
-pub use database_repository::DatabaseRepository;
+pub use repositories::{UserRepository};

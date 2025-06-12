@@ -1,7 +1,7 @@
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use anyhow::Error;
 use std::env;
-use crate::database_repository::DatabaseRepository;
+use crate::repositories::user_repository::UserRepository;
 
 pub async fn create_database() -> Result<(), Error> {
     let pg_host     = env::var("PG_HOST").expect("PG_HOST must be set");
@@ -50,7 +50,7 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
                 Ok(pool) => {
                     if let Ok(_) = sqlx::query("SELECT 1").execute(&pool).await {
                         // Utiliser le repository pour initialiser les tables
-                        let repository = DatabaseRepository::new(pool.clone());
+                        let repository = UserRepository::new(pool.clone());
                         if let Err(e) = repository.init_tables().await {
                             println!("Warning: Could not create tables: {}", e);
                         }

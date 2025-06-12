@@ -5,11 +5,11 @@ use time::OffsetDateTime;
 use crate::db_models::form_data::{FormData, NewFormData};
 use std::collections::HashMap;
 
-pub struct DatabaseRepository {
+pub struct UserRepository {
     pool: PgPool,
 }
 
-impl DatabaseRepository {
+impl UserRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -142,5 +142,54 @@ impl DatabaseRepository {
 
         println!("Database tables initialized successfully");
         Ok(())
+    }
+
+
+    /// Récupérer toutes les données de formulaire
+    pub async fn get_all(&self) -> Result<Vec<FormData>> {
+        let query = r#"
+            SELECT id, login, birthday, firstname, lastname, sexe, age, info, email, 
+                   files_info, created_at
+            FROM form_data 
+            ORDER BY created_at DESC
+        "#;
+
+        let rows = sqlx::query(query)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;        let mut form_data_list = Vec::new();
+        for row in rows {
+            let files_info: Option<String> = row.get("files_info");
+
+            let form_data = FormData {
+                id: row.get("id"),
+                login: row.get("login"),
+                birthday: row.get("birthday"),
+                firstname: row.get("firstname"),
+                lastname: row.get("lastname"),
+                sexe: row.get("sexe"),
+                age: row.get("age"),
+                info: row.get("info"),
+                email: row.get("email"),
+                files_info,
+                created_at: row.get("created_at"),
+            };
+            form_data_list.push(form_data);
+        }
+
+        Ok(form_data_list)
+    }
+
+    /// Supprimer une donnée de formulaire par ID
+    pub async fn delete_user(&self, id: Uuid) -> Result<bool> {
+        let query = "DELETE FROM form_data WHERE id = $1";
+
+        let result = sqlx::query(query)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("Failed to delete form data: {}", e)))?;
+
+        Ok(result.rows_affected() > 0)
     }
 }
