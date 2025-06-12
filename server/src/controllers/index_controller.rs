@@ -110,7 +110,7 @@ pub async fn get_form_data(
     match repository.get_all_form_data().await {
         Ok(form_data_list) => {
             // Convertir en JSON pour Table::create() - wrap dans un objet avec une clé
-            let wrapped_data = serde_json::json!({- "form_data": form_data_list});
+            let wrapped_data = serde_json::json!({"form_data": form_data_list});
             
             // Générer le HTML de la table avec les outils existants
             let table_html = Table::create(&wrapped_data, "form-data-table").to_html();
