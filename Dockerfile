@@ -47,6 +47,6 @@ COPY --from=rust-builder /app/target/x86_64-unknown-linux-musl/release/server /a
 COPY --from=wasm-builder /app/client/static /app/client/static
 COPY certs/ /app/certs/
 
-EXPOSE 8088
+EXPOSE 8090
 
 CMD ["/app/server"]
