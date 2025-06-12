@@ -17,6 +17,7 @@ const translations = {      fr: {
         files: "Fichiers",
         files_selected: "fichiers sélectionnés",
         ping: "Ping",
+        page_not_found: "Page non trouvée",
     },
       en: {
         login: "Login",
@@ -37,6 +38,7 @@ const translations = {      fr: {
         files: "Files",
         files_selected: "files selected",
         ping: "Ping",
+        page_not_found: "Page not found",
     }
 };
 

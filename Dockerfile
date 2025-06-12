@@ -39,13 +39,22 @@ COPY --from=wasm-builder /app/client/static/pkg ./client/static/pkg
 # Build server - this layer rebuilds when server src changes
 RUN cargo build --release --target x86_64-unknown-linux-musl --bin server
 
-# Runtime stage
+# Runtime stage minimal
 FROM alpine:latest
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates curl
 WORKDIR /app
+
+# Créer les répertoires nécessaires
+RUN mkdir -p /app/client/static /app/database/migrations /app/storage/files /app/storage/logs /app/certs
+
+# Copy le binaire compilé du stage rust-builder
 COPY --from=rust-builder /app/target/x86_64-unknown-linux-musl/release/server /app/server
+
+# Copy les fichiers WASM du stage wasm-builder
 COPY --from=wasm-builder /app/client/static /app/client/static
-COPY certs/ /app/certs/
+
+# Rendre le binaire exécutable
+RUN chmod +x /app/server
 
 EXPOSE 8090
 

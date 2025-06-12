@@ -4,7 +4,7 @@
 #2. WebAssembly
     #A. Compiler le pkg : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
 
-    #B. Docker : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build & docker-compose down & docker-compose up -d"
+    #B. Docker : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build --release & docker-compose down & docker-compose up -d"
     # DOCKER LOGS STREAM : docker logs -f webassembly_app
 
 #3. Chemin pour création rapide d'un composant client / serveur :

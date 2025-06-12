@@ -37,7 +37,7 @@
                     <div class="field">
                         <label for="sexe" data-translate="sexe"></label>
                         <select id="sexe">
-                            <!-- Options seront ajoutées dynamiquement par JavaScript -->
+                            <!-- Options seront ajoutées dynamiquement par Rust /client/src/lib.rs -->
                         </select>
                     </div>
 
@@ -75,9 +75,14 @@
                     <span class="loader"></span>
                 </button>
                 
-                <form id="button_ping"></form>
+                <form id="button_ping">
                     <button type="submit" form="button_ping" data-translate="ping"></button>
-                </div>
+                </form>
+
+                <form id="button_ping2">
+                    <button type="submit" form="button_ping2" data-translate="ping"></button>
+                </form>
+                
             </div>
         </div>
 

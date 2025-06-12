@@ -14,7 +14,7 @@ use crate::controllers::ping_controller;
 use crate::controllers::index_controller;
 use crate::controllers::weather_controller;
 use crate::ssl_config::SslConfig;
-use core::{init_db, create_database};
+use core::{init_db};
 
 
 
@@ -209,14 +209,14 @@ async fn start_full_web_server() -> std::io::Result<()> {
     };
 
     // Copier les valeurs nécessaires avant le move
-    let host = config.host.clone();
-    let port = config.port;
-    let workers = config.workers;
-    let max_connections = config.max_connections;
-    let keep_alive = config.keep_alive;
+    let host             = config.host.clone();
+    let port                = config.port;
+    let workers           = config.workers;
+    let max_connections   = config.max_connections;
+    let keep_alive     = config.keep_alive;
     let client_timeout = config.client_timeout;
-    let ssl_enabled = config.ssl_enabled;    let http_server_instance = HttpServer::new(move || {
-        let cors = configure_cors(&config);
+    let ssl_enabled        = config.ssl_enabled;    let http_server_instance = HttpServer::new(move || {
+    let cors               = configure_cors(&config);
         
         // Application de base avec tous les middlewares essentiels
         let app = App::new()
@@ -281,6 +281,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
             .service({
                 let mut files = Files::new("/", &static_path)
                     .index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string()));
+                
                 if config.file_caching {
                     files = files.use_etag(true).use_last_modified(true);
                 }
@@ -294,13 +295,9 @@ async fn start_full_web_server() -> std::io::Result<()> {
                 files
             })
             .service(Files::new("/favicon.ico", &favicon_path))
-            .default_service(web::route().to(|| async {
-                HttpResponse::NotFound().json(serde_json::json!({
-                    "error": "Resource not found",
-                    "status": 404,
-                    "timestamp": get_current_timestamp()
-                }))
-            }))
+            .default_service(web::get().to(|| async {
+                            actix_files::NamedFile::open_async("client/static/404.html").await
+                        }))
     })
     .workers(workers)
     .max_connections(max_connections)
@@ -349,7 +346,7 @@ pub struct WebServerConfig {
 impl Default for WebServerConfig {
     fn default() -> Self {
         Self {
-            host: "127.0.0.1".to_string(),
+            host: "localhost".to_string(),
             port: 8088,
             workers: std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
             max_connections: 25000,
@@ -370,48 +367,54 @@ fn create_web_server_config() -> WebServerConfig {
     let default_workers = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
     
     WebServerConfig {
-        host: env::var("SERVER_HOST").unwrap_or_else(|_| {
-            if is_production { "0.0.0.0".to_string() } else { "127.0.0.1".to_string() }
-        }),
+        host: env::var("SERVER_HOST")
+            .unwrap_or("localhost".to_string()),
+
         port: env::var("SERVER_PORT")
-            .unwrap_or_else(|_| if is_production { "80".to_string() } else { "8088".to_string() })
+            .unwrap_or("8088".to_string())
             .parse::<u16>()
             .expect("SERVER_PORT must be a valid number"),
+
         workers: env::var("SERVER_WORKERS")
-            .unwrap_or_else(|_| {
-                if is_production { 
-                    (default_workers * 2).to_string() 
-                } else { 
-                    "1".to_string() 
-                }
-            })
+            .unwrap_or("1".to_string())
             .parse::<usize>()
-            .unwrap_or(if is_production { default_workers * 2 } else { 1 }),
+            .unwrap_or(1),
+
         max_connections: env::var("MAX_CONNECTIONS")
-            .unwrap_or_else(|_| if is_production { "50000".to_string() } else { "1000".to_string() })
+            .unwrap_or( "1000".to_string())
             .parse::<usize>()
-            .unwrap_or(if is_production { 50000 } else { 1000 }),
+            .unwrap_or(1000),
+
         ssl_enabled: env::var("SSL_ENABLED")
-            .unwrap_or_else(|_| "false".to_string())
+            .unwrap_or("true".to_string())
             .parse::<bool>()
-            .unwrap_or(false),
+            .unwrap_or(true),
+
         compression_enabled: env::var("COMPRESSION_ENABLED")
-            .unwrap_or_else(|_| "true".to_string())
+            .unwrap_or( "true".to_string())
             .parse::<bool>()
             .unwrap_or(true),
+
         security_headers_enabled: env::var("SECURITY_HEADERS")
-            .unwrap_or_else(|_| if is_production { "true".to_string() } else { "false".to_string() })
+            .unwrap_or( "true".to_string())
             .parse::<bool>()
-            .unwrap_or(is_production),
-        cors_permissive: !is_production,
+            .unwrap_or(true),
+
+        cors_permissive: env::var("CORS_PERMISSIVE")
+            .unwrap_or( "false".to_string())
+            .parse::<bool>()
+            .unwrap_or(false) ,
+
         file_caching: env::var("FILE_CACHING")
-            .unwrap_or_else(|_| "true".to_string())
+            .unwrap_or( "true".to_string())
             .parse::<bool>()
             .unwrap_or(true),
+
         request_logging: env::var("REQUEST_LOGGING")
-            .unwrap_or_else(|_| "true".to_string())
+            .unwrap_or( "true".to_string())
             .parse::<bool>()
             .unwrap_or(true),
+
         ..Default::default()
     }
 }
@@ -457,12 +460,13 @@ fn print_server_info(config: &WebServerConfig) {
     println!("🌍 CORS Permissive: {}", config.cors_permissive);
     println!("💾 File Caching: {}", config.file_caching);
     println!("📝 Request Logging: {}", config.request_logging);
-    println!("");    println!("🔧 API Endpoints:");
-    println!("   • GET/POST /api/ping - Server health check");
-    println!("   • POST /api/form - Form submission");
-    println!("   • GET /api/form_data - Retrieve form_data table");
+    println!("");    
+    println!("🔧 API Endpoints:");
+    println!("   • GET/POST /api/ping           - Server health check");
+    println!("   • POST /api/form               - Form submission");
+    println!("   • GET /api/form_data           - Retrieve form_data table");
     println!("   • GET /api/weather/temperature - Weather data");
-    println!("   • GET /health - Health check endpoint");
+    println!("   • GET /health                  - Health check endpoint");
     println!("=====================================");
 }
 
@@ -503,11 +507,6 @@ fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf,
 
 /// Initialise la connexion à la base de données
 async fn init_database() -> Result<PgPool, Box<dyn std::error::Error>> {
-    println!("Creating database if it doesn't exist...");
-    if let Err(e) = create_database().await {
-        println!("Warning: Could not ensure database exists: {}", e);
-    }
-
     println!("Initializing database connection pool...");
     match init_db().await {
         Ok(pool) => {

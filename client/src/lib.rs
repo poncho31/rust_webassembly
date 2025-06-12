@@ -127,7 +127,21 @@ pub fn run() -> Result<(), JsValue> {
             log(&format!("❌ Erreur lors de l'initialisation du bouton ping: {:?}", e));
             return Err(e);
         }
-    }    
+    } 
+    
+    let ping_config2 = FormConfig::builder()
+        .validation(false)
+        .loading(true)
+        .success_message("🏓 Ping envoyé!")
+        .build();    // Initialisation du formulaire ping avec la nouvelle API simplifiée
+
+    match form_init_with_config("button_ping2", "/api/ping", None, ping_config2) {
+        Ok(_) => log("✅ Bouton ping initialisé avec succès"),
+        Err(e) => {
+            log(&format!("❌ Erreur lors de l'initialisation du bouton ping: {:?}", e));
+            return Err(e);
+        }
+    }       
     
     log("# End script - Enhanced Form System with Auto-Refresh Ready");
     Ok(())
