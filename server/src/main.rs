@@ -163,11 +163,9 @@ fn show_available_routes() {
     println!("   • GET  /api/ping              - Test de santé du serveur");
     println!("   • POST /api/ping              - Test de santé du serveur");
     println!("   • GET  /api/weather/temperature - Données météo");
-    println!("   • GET  /health                - Point de santé système");
     println!();
     println!("📄 Pages statiques:");
     println!("   • GET  /                      - Page d'accueil (index.html)");
-    println!("   • GET  /test                  - Page de test (test.html)");
     println!("   • GET  /pkg/*                 - Fichiers WebAssembly");
     println!("   • GET  /favicon.ico           - Icône du site");
     println!();
@@ -215,28 +213,38 @@ async fn start_full_web_server() -> std::io::Result<()> {
     let keep_alive     = config.keep_alive;
     let client_timeout = config.client_timeout;
     let ssl_enabled        = config.ssl_enabled;    let http_server_instance = HttpServer::new(move || {
-    let cors               = configure_cors(&config);
+        let cors               = configure_cors(&config);
         
         // Application de base avec tous les middlewares essentiels
+        let mut default_headers = middleware::DefaultHeaders::new()
+            .add(("X-Content-Type-Options", "nosniff"))
+            .add((
+                "X-Frame-Options",
+                if config.security_headers_enabled { "DENY" } else { "SAMEORIGIN" }
+            ))
+            .add((
+                "X-XSS-Protection",
+                if config.security_headers_enabled { "1; mode=block" } else { "1" }
+            ))
+            .add((
+                "Referrer-Policy",
+                if config.security_headers_enabled { "strict-origin-when-cross-origin" } else { "same-origin" }
+            ))
+            .add((
+                "Content-Security-Policy",
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; connect-src 'self'; media-src 'self'; child-src 'none'; form-action 'self'; manifest-src 'self'; worker-src 'self';"
+            ));
+        if config.ssl_enabled {
+            default_headers = default_headers.add((
+                "Strict-Transport-Security",
+                "max-age=63072000; includeSubDomains; preload"
+            ));
+        }
         let app = App::new()
             .app_data(web::Data::new(db_pool.clone()))
             .wrap(cors)
             .wrap(middleware::Compress::default())
-            .wrap(middleware::DefaultHeaders::new()
-                .add(("X-Content-Type-Options", "nosniff"))
-                .add((
-                    "X-Frame-Options", 
-                    if config.security_headers_enabled { "DENY" } else { "SAMEORIGIN" }
-                ))
-                .add((
-                    "X-XSS-Protection", 
-                    if config.security_headers_enabled { "1; mode=block" } else { "1" }
-                ))
-                .add((
-                    "Referrer-Policy", 
-                    if config.security_headers_enabled { "strict-origin-when-cross-origin" } else { "same-origin" }
-                ))
-            );
+            .wrap(default_headers);
         
         app
             /*
@@ -246,6 +254,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
             *  ██   ██ ██    ██ ██  ██    ██    ██            ██
             *  ██   ██  ██████   ████     ██    ███████  ██████
             */            
+            // Routes de l'API
             .service(web::scope("/api")
                 .route("/form", web::post().to(index_controller::post))
                 .route("/form_data", web::get().to(index_controller::get_form_data))
@@ -254,14 +263,6 @@ async fn start_full_web_server() -> std::io::Result<()> {
                 .route("/weather/temperature", web::get().to(weather_controller::get_temperature))
             )
             
-            // Health check endpoint
-            .route("/health", web::get().to(|| async {
-                HttpResponse::Ok().json(serde_json::json!({
-                    "status": "healthy",
-                    "timestamp": get_current_timestamp(),
-                    "version": env!("CARGO_PKG_VERSION")
-                }))
-            }))
 
             /*
              *  ███████ ████████  █████  ████████ ██  ██████  ███████
@@ -270,13 +271,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
              *       ██    ██    ██   ██    ██    ██ ██            ██
              *  ███████    ██    ██   ██    ██    ██  ██████  ███████
              */
-            .service({
-                let mut files = Files::new("/test", &static_path).index_file("test.html".to_string());
-                if config.file_caching {
-                    files = files.use_etag(true).use_last_modified(true);
-                }
-                files
-            })
+            // Fichier index.html 
             .service({
                 let mut files = Files::new("/", &static_path)
                     .index_file(env::var("HTML_INDEX").unwrap_or_else(|_| "index.html".to_string()));
@@ -286,6 +281,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
                 }
                 files
             })
+            // fichier pkg
             .service({
                 let mut files = Files::new("/pkg", &pkg_path).show_files_listing();
                 if config.file_caching {
@@ -293,6 +289,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
                 }
                 files
             })
+            // Fichier favicon.ico
             .service(Files::new("/favicon.ico", &favicon_path))
             .default_service(web::get().to(|| async {
                             actix_files::NamedFile::open_async("client/static/404.html").await
@@ -465,7 +462,6 @@ fn print_server_info(config: &WebServerConfig) {
     println!("   • POST /api/form               - Form submission");
     println!("   • GET /api/form_data           - Retrieve form_data table");
     println!("   • GET /api/weather/temperature - Weather data");
-    println!("   • GET /health                  - Health check endpoint");
     println!("=====================================");
 }
 
