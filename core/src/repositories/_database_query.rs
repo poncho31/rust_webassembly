@@ -13,6 +13,21 @@ impl DatabaseQuery {
         Self { pool }
     }
 
+    pub async fn create_tables(&self, table_name: &str, columns: &str) -> Result<()> {
+        let create_table_query = format!(
+            "CREATE TABLE IF NOT EXISTS {} ({})",
+            table_name, columns
+        );
+        
+        sqlx::query(&create_table_query)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("Failed to create table {}: {}", table_name, e)))?;
+
+        println!("Table {} created successfully", table_name);
+        Ok(())
+    }   
+
     pub async fn create_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
         for idx in indexes {
             let index_query = format!(

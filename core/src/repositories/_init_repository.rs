@@ -16,10 +16,12 @@ impl InitRepository {
 
     /// Initialise la table des utilisateurs
     pub async fn init_users_table(&self) -> Result<()> {
+        println!("Initializing user tables...");
+
         // Création table;
         DatabaseQuery::new(self.pool.clone()).run_query(
             r#"
-            CREATE TABLE IF NOT EXISTS users (
+                CREATE TABLE IF NOT EXISTS users (
                     id          UUID PRIMARY KEY,
                     login       TEXT,
                     birthday    TEXT,
@@ -48,14 +50,18 @@ impl InitRepository {
 
     /// Initialise la table des migrations
     pub async fn init_migration_table(&self) -> Result<()> {
+        println!("Initializing migration tables...");
+        
         DatabaseQuery::new(self.pool.clone()).run_query(
-            r#"CREATE TABLE IF NOT EXISTS migration (
-                id          SERIAL PRIMARY KEY NOT NULL,
-                name        TEXT NOT NULL UNIQUE,
-                description TEXT,
-                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            )"#
+            r#"
+                CREATE TABLE IF NOT EXISTS migration (
+                    id          SERIAL PRIMARY KEY NOT NULL,
+                    name        TEXT NOT NULL UNIQUE,
+                    description TEXT,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            "#
         ).await?;
 
         // Création des indexes

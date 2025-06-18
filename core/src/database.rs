@@ -1,8 +1,33 @@
-use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use sqlx::{pool, postgres::PgPoolOptions, Pool, Postgres};
 use anyhow::Error;
 use std::env;
 use crate::repositories::{_init_repository::InitRepository};
+use crate::repositories::migrations;
+use crate::repositories::_database_query::DatabaseQuery;
 
+async fn create_tables(pool: &Pool<Postgres>) {
+    // USER-
+    if let Err(e) = InitRepository::new(pool.clone()).init_users_table().await {
+        println!("Warning: Could not create user tables: {}", e);
+    }
+
+    // MIGRATION
+    if let Err(e) = InitRepository::new(pool.clone()).init_migration_table().await {
+        println!("Warning: Could not create migration tables: {}", e);
+    }
+
+    // Exécution des migrations via le module migrations
+    println!("Running migrations...");
+    let repo: DatabaseQuery = DatabaseQuery::new(pool.clone());
+    
+    if let Err(e) = migrations::migration_create_logs::migrate(&repo).await {
+        println!("Warning: Migration 001 failed: {}", e);
+        if let Err(e) = migrations::migration_create_logs::rollback(&repo).await {
+            println!("Warning: Rollback failed: {}", e);
+        }
+    }
+    
+}
 
 pub async fn init_db() -> Result<Pool<Postgres>, Error> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -17,20 +42,7 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
                 Ok(pool) => {
                     if let Ok(_) = sqlx::query("SELECT 1").execute(&pool).await {
                         // Initialize and create tables if needed
-
-                        // USER
-                        println!("Initializing user tables...");
-                        if let Err(e) = InitRepository::new(pool.clone()).init_users_table().await {
-                            println!("Warning: Could not create user tables: {}", e);
-                        }
-                        println!("Database user successfully initialized");
-
-                        // MIGRATION
-                        println!("Initializing migration tables...");
-                        if let Err(e) = InitRepository::new(pool.clone()).init_migration_table().await {
-                            println!("Warning: Could not create migration tables: {}", e);
-                        }
-                        println!("Database migration successfully initialized");
+                        create_tables(&pool).await;
 
                         return Ok(pool);
                     }
