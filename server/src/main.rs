@@ -157,7 +157,8 @@ fn show_server_status() {
 
 /// Affiche toutes les routes disponibles
 fn show_available_routes() {
-    println!("🔗 === ROUTES DISPONIBLES ===");    println!("📡 API Endpoints:");
+    println!("🔗 === ROUTES DISPONIBLES ===");    
+    println!("📡 API Endpoints:");
     println!("   • POST /api/form              - Soumission de formulaire");
     println!("   • GET  /api/form_data         - Récupération des données form_data");
     println!("   • GET  /api/ping              - Test de santé du serveur");

@@ -26,7 +26,21 @@ impl DatabaseQuery {
 
         println!("Table {} created successfully", table_name);
         Ok(())
-    }   
+    }
+
+    pub async fn drop_table(&self, table: &str) -> Result<()> {
+        let drop_table_query = format!(
+            "DROP TABLE IF EXISTS {}",
+            table
+        );
+        sqlx::query(table)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("Failed to drop table: {}", e)))?;
+
+        println!("Table dropped successfully");
+        Ok(())
+    }
 
     pub async fn create_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
         for idx in indexes {
@@ -41,6 +55,22 @@ impl DatabaseQuery {
         }
 
         println!("Indexes created successfully for table: {}", table_name);
+        Ok(())
+    }
+
+    pub async fn drop_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
+        for idx in indexes {
+            let drop_index_query = format!(
+                "DROP INDEX IF EXISTS idx_{}_{}",
+                table_name, idx
+            );
+            sqlx::query(&drop_index_query)
+                .execute(&self.pool)
+                .await
+                .expect(&format!("Failed to drop index for {}: {}", table_name, idx));
+        }
+
+        println!("Indexes dropped successfully for table: {}", table_name);
         Ok(())
     }
 

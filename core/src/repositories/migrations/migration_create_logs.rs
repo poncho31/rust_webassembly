@@ -2,7 +2,8 @@ use anyhow::Result;
 use crate::repositories::_database_query::DatabaseQuery;
 
 
-const TABLE: &str = "logs";
+const TABLE   : &str   = "logs";
+const INDEXES: &[&str] = &["type", "level", "created_at"];
 
 /// Migration pour créer la table "posts" et ajouter des index
 pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
@@ -15,7 +16,7 @@ pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
         r#"
             id          UUID PRIMARY KEY,
             type        TEXT NOT NULL,
-            level       TEXT NOT NULL,
+            level       INT NOT NULL,
             message     TEXT NOT NULL,
             context     TEXT,
             created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -25,7 +26,7 @@ pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
 
 
     // Création des index
-    repo.create_indexes(TABLE, vec!["type", "level", "created_at"]).await?;
+    repo.create_indexes(TABLE, INDEXES.to_vec()).await?;
 
     println!("Migration to create logs table completed successfully.");
     Ok(())
@@ -36,10 +37,8 @@ pub async fn rollback(repo: &DatabaseQuery) -> Result<()> {
 
 
     // Suppression de la table posts
-    repo.run_query(
-        &format!("DROP TABLE IF EXISTS {}", TABLE)
-    ).await?;
-
+    repo.drop_indexes(TABLE, INDEXES.to_vec()).await?;
+    repo.drop_table(TABLE).await?;
 
     println!("Rollback completed successfully.");
     Ok(())
