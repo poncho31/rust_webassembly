@@ -14,9 +14,13 @@ impl RefreshHandler {
     /// Créer un nouveau gestionnaire
     pub fn new(config: RefreshConfig) -> Self {
         Self { config }
-    }    /// Exécuter un rafraîchissement
+    }
+
+    /// Exécuter un rafraîchissement
     pub async fn execute_refresh(&self) {
-        log(&format!("🔄 Refreshing: {}", self.config.id));        // Construire l'URL avec les paramètres si des champs input sont configurés
+        log(&format!("🔄 Refreshing: {}", self.config.id));
+
+        // Construire l'URL avec les paramètres si des champs input sont configurés
         let url = if !self.config.input_field_selectors.is_empty() {
             match self.build_url_with_params() {
                 Ok(url) => url,
@@ -24,10 +28,11 @@ impl RefreshHandler {
                     log(&format!("⚠️ Failed to build URL with params: {}", e));
                     self.config.endpoint.clone()
                 }
-            }
-        } else {
+            }        } else {
             self.config.endpoint.clone()
-        };        // Utiliser client_request pour faire l'appel API
+        };
+
+        // Utiliser client_request pour faire l'appel API
         // Si c'est du HTML sans champ JSON, utiliser fetch_text
         if matches!(self.config.content_type, ContentType::Html) && self.config.json_field.is_none() {
             match fetch_text(&url).await {

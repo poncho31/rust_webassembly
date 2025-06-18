@@ -30,6 +30,16 @@ if /i "%1"=="docker" (
         echo [INFO] wasm-pack non trouvé, installation...
         cargo install wasm-pack
     )
+
+    if /i "%1"=="force" (
+        taskkill /f /im rust-analyzer.exe
+        taskkill /f /im server.exe
+        
+        cargo clean     
+        del /q /s client\static\pkg\* 
+
+        echo [INFO] Projet nettoyé.
+    )
     
     REM compile webassembly
     cd client

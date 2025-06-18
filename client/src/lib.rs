@@ -19,11 +19,11 @@ use refresh::config::DataTransform;
 // Fonction d'initialisation du script
 #[wasm_bindgen(start)]
 pub fn run() -> Result<(), JsValue> {
-    log("# Begin script - Enhanced Form System");
-
-    // Initialiser les rafraîchissements automatiques
+    log("# Begin script - Enhanced Form System");    // Initialiser les rafraîchissements automatiques
     log("# Initializing auto-refresh system");
-    wasm_bindgen_futures::spawn_local(init_auto_refresh());// Configuration avancée pour le formulaire principal
+    wasm_bindgen_futures::spawn_local(init_auto_refresh());
+    
+    // Configuration avancée pour le formulaire principal
     log("# Enhanced form initialization");
     
     // Configuration du formulaire principal avec validation avancée

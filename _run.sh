@@ -34,6 +34,12 @@ else
         echo "[INFO] wasm-pack non trouvé, installation..."
         cargo install wasm-pack
     fi
+
+    if [ "$1" = "force" ]; then
+        cargo clean
+        rm -rf client/static/pkg/*
+        echo "[INFO] Projet nettoyé."
+    fi
     
     # compile webassembly
     cd client
