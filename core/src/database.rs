@@ -23,7 +23,14 @@ async fn create_tables(pool: &Pool<Postgres>) {
     if let Err(e) = migrations::migration_create_logs::migrate(&repo).await {
         println!("Warning: Migration 001 failed: {}", e);
         if let Err(e) = migrations::migration_create_logs::rollback(&repo).await {
-            println!("Warning: Rollback failed: {}", e);
+            println!("Warning: Rollback 001 failed: {}", e);
+        }
+    }
+
+    if let Err(e) = migrations::migration_test::migrate(&repo).await {
+        println!("Warning: Migration test failed: {}", e);
+        if let Err(e) = migrations::migration_test::rollback(&repo).await {
+            println!("Warning: Rollback test failed: {}", e);
         }
     }
     

@@ -12,6 +12,11 @@ impl DatabaseQuery {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
+    
+    // Méthode pour récupérer une référence au pool de connexion
+    pub fn get_pool(&self) -> &PgPool {
+        &self.pool
+    }
 
     pub async fn create_tables(&self, table_name: &str, columns: &str) -> Result<()> {
         let create_table_query = format!(

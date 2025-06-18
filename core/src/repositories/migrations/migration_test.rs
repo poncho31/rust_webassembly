@@ -3,8 +3,8 @@ use crate::repositories::_database_query::DatabaseQuery;
 use crate::repositories::_init_repository::InitRepository;
 
 
-const TABLE   : &str   = "logs";
-const INDEXES: &[&str] = &["type", "level", "created_at"];
+const TABLE   : &str   = "tests";
+const INDEXES: &[&str] = &["level", "created_at"];
 
 /// Migration pour créer la table "posts" et ajouter des index
 pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
@@ -29,7 +29,9 @@ pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
     // Création des index
     repo.create_indexes(TABLE, INDEXES.to_vec()).await?;
 
-    println!("Migration to create logs table completed successfully.");
+    println!("Migration to create logs table completed successfully.");   // Créer une instance de InitRepository et appeler la méthode init_repository
+   let init_repo = InitRepository::new(repo.get_pool().clone());
+   init_repo.init_repository(TABLE, table_fields).await?;
    
    Ok(())
 }
