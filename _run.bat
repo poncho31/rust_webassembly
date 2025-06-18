@@ -24,14 +24,13 @@ if /i "%1"=="docker" (
         refreshenv
     )
 
-
     REM Vérifie la présence de wasm-pack et installe si manquant
     where wasm-pack >nul 2>nul
     if errorlevel 1 (
         echo [INFO] wasm-pack non trouvé, installation...
         cargo install wasm-pack
     )
-
+    
     REM compile webassembly
     cd client
     wasm-pack build --target web --out-dir static/pkg
