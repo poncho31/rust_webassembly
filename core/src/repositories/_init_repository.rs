@@ -72,4 +72,16 @@ impl InitRepository {
         println!("Database migration initialized successfully");
         Ok(())
     }
+
+
+    // Ajouter ici une méthode pour intialiser des _repository lors de la création d'une migration
+    pub async fn init_repository(&self, repository_name: &str) -> Result<()> {
+        println!("Initializing repository: {}", repository_name);
+
+        
+        // End
+        println!("Repository {} initialized successfully", repository_name);
+        Ok(())
+    }
+
 }
