@@ -1,1 +1,0 @@
-cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build & docker-compose up -d"

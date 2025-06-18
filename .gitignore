@@ -65,7 +65,3 @@ yarn-error.log*
 storage/*
 !storage/
 !storage/.gitignore
-
-database/*
-!database/
-!database/migrations

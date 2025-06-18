@@ -10,7 +10,7 @@
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - ./database/pg_data:/var/lib/postgresql/data/pgdata
+      - ./storage/database/pg_data:/var/lib/postgresql/data/pgdata
     ports:
       - "${PG_PORT_DOCKER}:${PG_PORT}"
     networks:
@@ -26,7 +26,7 @@
       context: .
       dockerfile: Dockerfile
       no_cache: false
-    container_name: webassembly_app
+    container_name: ${APP_NAME_DOCKER}
     restart: unless-stopped
     environment:
       # Configuration serveur Docker (variables fixes)
@@ -59,7 +59,6 @@
       - "${SERVER_PORT_DOCKER}:${SERVER_PORT_DOCKER}"   # HTTPS (port principal 8090)
     volumes:
       - ./client/static:/app/client/static:ro
-      - ./database/migrations:/app/database/migrations
       - ./storage/files:/app/storage/files
       - ./storage/logs:/app/storage/logs
       - ./certs:/app/certs   # Montage des certificats SSL
