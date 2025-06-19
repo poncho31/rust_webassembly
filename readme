@@ -7,10 +7,15 @@ WebAssembly_Development:
   Local_Development:
     - Run command: >
         cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
+        
   Docker_Deployment:
     - Run command: >
         cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build --release & docker-compose down & docker-compose up -d"
     - View logs: docker logs -f webassembly_app
+
+  Android_Development:
+    - Run command: >
+        cmd /c "cd android & .\build_rust_android.bat & .\gradlew assembleDebug"
 
 ## Project Architecture:
   lib.rs: Client-side logic DOM interactions compiled to WASM

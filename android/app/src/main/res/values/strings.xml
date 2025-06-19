@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Rust WebAssembly App</string>
-    <string name="app_title">Application Rust + Android</string>
+    <string name="app_title">Application Rust + Android TEST</string>
     <string name="server_status">Statut du serveur</string>
     <string name="start_server">Démarrer le serveur</string>
     <string name="stop_server">Arrêter le serveur</string>
