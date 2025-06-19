@@ -37,10 +37,9 @@ impl InitRepository {
             // Mettre à jour le fichier mod.rs pour inclure le nouveau module
             self.update_mod_rs(repository_name)?;
             
-            println!("Repository {} initialized successfully", repository_name);
-        }
+            println!("\x1b[32mRepository {}initialized successfully\x1b[0m", repository_name);        }
         else{
-            println!("Repository {} already exists", repository_name);
+            println!("\x1b[33mRepository {} already exist\x1b[0m", repository_name);
         }
 
         Ok(())

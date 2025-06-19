@@ -20,79 +20,60 @@ impl DatabaseQuery {
     // Méthode pour récupérer une référence au pool de connexion
     pub fn get_pool(&self) -> &PgPool {
         &self.pool
-    }
+    }    /// Lance une requête en html brut => utilisé surtout dans la partie migration
+    pub async fn run_query(&self, query: &str) -> Result<()> {        // Lance la requête
+        sqlx::query(query)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| Error::msg(format!("\x1b[31mFailed query {}\x1b[0m", e)))?;
 
+        println!("\x1b[32mQuery executed successfully: {}\x1b[0m", query);
+        Ok(())
+    }
+    
     pub async fn create_tables(&self, table_name: &str, columns: &str) -> Result<()> {
         let create_table_query = format!(
             "CREATE TABLE IF NOT EXISTS {} ({})",
             table_name, columns
         );
         
-        sqlx::query(&create_table_query)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| Error::msg(format!("Failed to create table {}: {}", table_name, e)))?;
+        self.run_query(&create_table_query).await?;
 
         println!("Table {} created successfully", table_name);
         Ok(())
-    }
-
-    pub async fn drop_table(&self, table: &str) -> Result<()> {
+    }    pub async fn drop_table(&self, table: &str) -> Result<()> {
         let drop_table_query = format!(
             "DROP TABLE IF EXISTS {}",
             table
         );
-        sqlx::query(table)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| Error::msg(format!("Failed to drop table: {}", e)))?;
+        // Correction d'un bug: la requête doit utiliser drop_table_query, pas table
+        self.run_query(&drop_table_query).await?;
 
         println!("Table dropped successfully");
         Ok(())
-    }
-
-    pub async fn create_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
+    }    pub async fn create_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
         for idx in indexes {
             let index_query = format!(
                 "CREATE INDEX IF NOT EXISTS idx_{}_{} ON {} ({})",
                 table_name, idx, table_name, idx
             );
-            sqlx::query(&index_query)
-                .execute(&self.pool)
-                .await
-                .expect(&format!("Failed to create index for {}: {}", table_name, idx));
+            // Utilisation de run_query et propagation correcte des erreurs avec ?
+            self.run_query(&index_query).await?;
         }
 
         println!("Indexes created successfully for table: {}", table_name);
         Ok(())
-    }
-
-    pub async fn drop_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
+    }    pub async fn drop_indexes(&self, table_name: &str, indexes: Vec<&str>) -> Result<()> {
         for idx in indexes {
             let drop_index_query = format!(
                 "DROP INDEX IF EXISTS idx_{}_{}",
                 table_name, idx
             );
-            sqlx::query(&drop_index_query)
-                .execute(&self.pool)
-                .await
-                .expect(&format!("Failed to drop index for {}: {}", table_name, idx));
+            // Utilisation de run_query et propagation correcte des erreurs avec ?
+            self.run_query(&drop_index_query).await?;
         }
 
         println!("Indexes dropped successfully for table: {}", table_name);
-        Ok(())
-    }
-
-    
-    /// Lance une requête en html brut => utilisé surtout dans la partie migration
-    pub async fn run_query(&self, query: &str) -> Result<()> {
-        // Lance la requête
-        sqlx::query(query)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| Error::msg(format!("Failed query {}", e)))?;
-
-        println!("Query executed successfully: {}", query);
         Ok(())
     }
 }
@@ -130,14 +111,15 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     println!("Connecting to database...");
-    
-    for i in 1..=3 {            
+      for i in 1..=3 {            
         match PgPoolOptions::new()
             .max_connections(5)
             .connect(&database_url)
             .await {
                 Ok(pool) => {
-                    if let Ok(_) = sqlx::query("SELECT 1").execute(&pool).await {
+                    // Créer une instance de DatabaseQuery pour utiliser run_query
+                    let db_query = DatabaseQuery::new(pool.clone());
+                    if let Ok(_) = db_query.run_query("SELECT 1").await {
                         // Initialize and create tables if needed
                         _init_migration_tables(&pool).await;
 
