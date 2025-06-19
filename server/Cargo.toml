@@ -3,6 +3,16 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+# Library target for Android builds
+[lib]
+name = "server"
+crate-type = ["cdylib", "rlib"]
+
+# Binary target for standalone execution
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
 [build-dependencies]
 walkdir = "2"
 
