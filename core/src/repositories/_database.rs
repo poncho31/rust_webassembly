@@ -84,9 +84,33 @@ impl DatabaseQuery {
             );
             // Utilisation de run_query et propagation correcte des erreurs avec ?
             self.run_query(&drop_index_query).await?;
+        }        println!("Indexes dropped successfully for table: {}", table_name);
+        Ok(())
+    }
+    
+    /// Vérifie si une base de données existe
+    pub async fn database_exists(&self, database_name: &str) -> Result<bool> {
+        let query = "SELECT 1 FROM pg_database WHERE datname = $1";
+        
+        match sqlx::query(query)
+            .bind(database_name)
+            .fetch_optional(&self.pool)
+            .await {
+                Ok(Some(_)) => Ok(true),
+                Ok(None) => Ok(false),
+                Err(e) => Err(Error::msg(format!("Failed to check database existence: {}", e))),
+            }
+    }
+    
+    /// Crée une base de données si elle n'existe pas
+    pub async fn create_database_if_not_exists(&self, database_name: &str) -> Result<()> {
+        if !self.database_exists(database_name).await? {
+            let create_query = format!("CREATE DATABASE \"{}\"", database_name);
+            self.run_query(&create_query).await?;
+            println!("\x1b[32mDatabase '{}' created successfully\x1b[0m", database_name);
+        } else {
+            println!("\x1b[33mDatabase '{}' already exists\x1b[0m", database_name);
         }
-
-        println!("Indexes dropped successfully for table: {}", table_name);
         Ok(())
     }
 }
@@ -94,32 +118,38 @@ impl DatabaseQuery {
 
 /// Exécute les migrations nécessaires pour créer les tables de base de données
 pub async fn _init_migration_tables(pool: &Pool<Postgres>) {
-    // Exécution des migrations via le module migrations
     println!("Running migrations...");
 
-    // Exécution des migrations via le module migrations
-    let repo: DatabaseQuery = DatabaseQuery::new(pool.clone());
+    let repo = DatabaseQuery::new(pool.clone());
     
-    // Exécution des migrations avec gestion des erreurs
-    if let Err(err) = migrations::migration_create_migration::run(&repo).await {
-        eprintln!("Migration failed: {}", err);
+    let mut failed_migrations = Vec::new();
+    
+    // Macro pour simplifier l'exécution des migrations
+    macro_rules! run_migration {
+        ($name:expr, $migration:expr) => {
+            if let Err(err) = $migration.await {
+                eprintln!("\x1b[31mMigration '{}' failed: {}\x1b[0m", $name, err);
+                failed_migrations.push($name);
+            }
+        };
     }
     
-    // Continuer avec les autres migrations seulement si la première réussit
-    if let Err(err) = migrations::migration_create_users::run(&repo).await {
-        eprintln!("Migration failed: {}", err);
-    }
+    // Exécution séquentielle des migrations
+    run_migration!("migration_create_migration", migrations::migration_create_migration::run(&repo));
+    run_migration!("migration_create_users",     migrations::migration_create_users::run(&repo));
+    run_migration!("migration_create_logs",      migrations::migration_create_logs::run(&repo));
+    run_migration!("migration_test",             migrations::migration_test::run(&repo));
     
-    if let Err(err) = migrations::migration_create_logs::run(&repo).await {
-        eprintln!("Migration failed: {}", err);
+    // Affichage du résultat final
+    if failed_migrations.is_empty() {
+        println!("\x1b[32mAll migrations completed successfully.\x1b[0m");
+    } else {
+        eprintln!("\x1b[31m{} migration(s) failed: {}\x1b[0m", 
+            failed_migrations.len(), 
+            failed_migrations.join(", "));
     }
-
-    if let Err(err) = migrations::migration_test::run(&repo).await {
-        eprintln!("Migration failed: {}", err);
-    }
-
-    println!("All migrations completed successfully.");
 }
+
 
 /// Initialise la base de données en créant un pool de connexions
 pub async fn init_db() -> Result<Pool<Postgres>, Error> {
@@ -130,10 +160,16 @@ pub async fn init_db() -> Result<Pool<Postgres>, Error> {
         match PgPoolOptions::new()
             .max_connections(5)
             .connect(&database_url)
-            .await {
-                Ok(pool) => {
+            .await {                Ok(pool) => {
                     // Créer une instance de DatabaseQuery pour utiliser run_query
                     let db_query = DatabaseQuery::new(pool.clone());
+
+                    // Vérifier et créer la base de données si nécessaire
+                    let database_name = env::var("PG_DATABASE").expect("PG_DATABASE must be set");
+                    if let Err(e) = db_query.create_database_if_not_exists(&database_name).await {
+                        println!("Warning: Could not create database (may already exist or insufficient permissions): {}", e);
+                    }
+
                     if let Ok(_) = db_query.run_query("SELECT 1").await {
                         // Initialize and create tables if needed
                         _init_migration_tables(&pool).await;
