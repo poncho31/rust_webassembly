@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Règles pour la sauvegarde cloud -->
+        <include domain="file" path="." />
+        <exclude domain="file" path="tmp/" />
+        <exclude domain="database" />
+    </cloud-backup>
+    <!--
+    <device-transfer>
+        Règles pour le transfert d'appareil
+        <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="device.xml" />
+    </device-transfer>
+    -->
+</data-extraction-rules>

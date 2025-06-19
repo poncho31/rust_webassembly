@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Inclure tous les fichiers par défaut -->
+    <include domain="file" path="." />
+    
+    <!-- Exclure les fichiers temporaires et sensibles -->
+    <exclude domain="file" path="tmp/" />
+    <exclude domain="file" path="cache/" />
+    <exclude domain="database" />
+    <exclude domain="sharedpref" path="secure_prefs.xml" />
+</full-backup-content>

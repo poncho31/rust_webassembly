@@ -66,4 +66,30 @@ storage/*
 !storage/
 !storage/.gitignore
 
-/android
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/app/src/main/assets/
+android/app/src/main/res/raw/
+android/app/release/
+android/app/debug/
+android/*.log
+android/*.hprof
+android/lint/
+android/fastlane/report.xml
+android/fastlane/Preview.html
+android/fastlane/screenshots/
+android/fastlane/test_output/
+android/obj/
+android/*.apk
+android/*.aab
+android/*.dex
+android/*.class
