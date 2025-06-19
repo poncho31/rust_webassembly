@@ -65,3 +65,5 @@ yarn-error.log*
 storage/*
 !storage/
 !storage/.gitignore
+
+/android

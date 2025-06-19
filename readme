@@ -1,15 +1,31 @@
-#1. DATABASE
-    #A. POSTGRE WINDOWS: https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
+# WebAssembly Unified Frontend Backend
 
-#2. WebAssembly
-    #A. Compiler le pkg : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
+## Database Setup:
+  # PostgreSQL for Windows at https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 
-    #B. Docker : cmd /c  "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build --release & docker-compose down & docker-compose up -d"
-    # DOCKER LOGS STREAM : docker logs -f webassembly_app
+WebAssembly_Development:
+  Local_Development:
+    - Run command: >
+        cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
+  Docker_Deployment:
+    - Run command: >
+        cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build --release & docker-compose down & docker-compose up -d"
+    - View logs: docker logs -f webassembly_app
 
-#3. Chemin pour création rapide d'un composant client / serveur :
-    - "lib.rs" : -Se comporte comme le JS et contient les interactions / affichages de données dans des éléments html
-               -sera compilé en wasm et sera importé dans le fichier index.html via client.js
-    - "index.html" : contient la structure de la page web, les appels aux fonctions du lib.rs (compilé dans client_bg.wasm) via client.js et les éléments html
-    - "main.rs"    : contient les routes qui applent des controllers spécifiques
-    - "*_controllers.rs" : contient les fonctions qui appellent les services
+## Project Architecture:
+  lib.rs: Client-side logic DOM interactions compiled to WASM
+  index.html: Web structure calls WASM functions via client.js
+  main.rs: Server routes to controllers
+  controllers.rs: Business logic to services
+
+## Android Build:
+  Navigate to android folder and run:
+    - cd android
+    - .\build_rust_android.bat
+    - .\gradlew assembleDebug
+
+## Development Workflow:
+  1. Develop: Edit lib.rs and index.html
+  2. Compile: Run wasm-pack build
+  3. Deploy: Use Docker or local run
+  4. Mobile: Build

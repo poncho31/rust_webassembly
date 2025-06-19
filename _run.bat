@@ -31,6 +31,13 @@ if /i "%1"=="docker" (
         cargo install wasm-pack
     )
 
+    REM Vérifie la présence de cargo-ndk et installe si manquant
+    where cargo-ndk >nul 2>nul
+    if errorlevel 1 (
+        echo [INFO] cargo-ndk non trouvé, installation...
+        cargo install cargo-ndk
+    )
+
     if /i "%1"=="force" (
         taskkill /f /im rust-analyzer.exe
         taskkill /f /im server.exe
