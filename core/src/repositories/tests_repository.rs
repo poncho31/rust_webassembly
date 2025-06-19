@@ -7,9 +7,6 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow)]
 pub struct Tests {
     pub id: Option<Uuid>,
-    pub level: i32,
-    pub message: String,
-    pub context: Option<String>,
     pub created_at: OffsetDateTime,
     pub updated_at: OffsetDateTime,
 }
@@ -19,15 +16,10 @@ pub struct TestsRepository {
 }
 
 impl Tests {
-    pub fn new(level: &i32,
-        message: &str,
-        context: Option<&str>) -> Self {
+    pub fn new() -> Self {
         let now = OffsetDateTime::now_utc();
         Self {
             id: Uuid::new_v4(),
-                    level: *level,
-                    message: message.to_string(),
-                    context: context.map(|s| s.to_string()),
             created_at: now,
             updated_at: now,
         }
@@ -42,12 +34,9 @@ impl TestsRepository {
     /// Crée un nouvel enregistrement
     pub async fn create(&self, item: &Tests) -> Result<Tests> {
         let result = sqlx::query_as::<_, Tests>(
-            r#"INSERT INTO tests (id, level, message, context, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *"#
+            r#"INSERT INTO tests (id, created_at, updated_at) VALUES ($1, $2, $3) RETURNING *"#
         )
         .bind(&item.id)
-        .bind(&item.level)
-        .bind(&item.message)
-        .bind(&item.context)
         .bind(&item.created_at)
         .bind(&item.updated_at)
         .fetch_one(&self.pool)
@@ -84,13 +73,10 @@ impl TestsRepository {
         let now = OffsetDateTime::now_utc();
 
         let result = sqlx::query_as::<_, Tests>(
-            r#"UPDATE tests SET level = $2, message = $3, context = $4, updated_at = $6, updated_at = $7"#
+            r#"UPDATE tests SET updated_at = $3, updated_at = $4"#
             .to_string() + " WHERE id = $1 RETURNING *"
         )
         .bind(&item.id)
-        .bind(&item.level)
-        .bind(&item.message)
-        .bind(&item.context)
         .bind(&item.updated_at)
         .bind(&now)
         .fetch_one(&self.pool)

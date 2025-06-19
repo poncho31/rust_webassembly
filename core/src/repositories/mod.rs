@@ -1,4 +1,4 @@
-pub mod _database_query;
+pub mod _database;
 pub mod _init_repository;
 pub mod migrations;
 

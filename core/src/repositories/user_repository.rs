@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use crate::{repositories::_database_query::DatabaseQuery};
+use crate::{repositories::_database::DatabaseQuery};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow)]
 pub struct User {

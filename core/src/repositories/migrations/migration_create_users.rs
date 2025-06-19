@@ -4,10 +4,11 @@ use crate::repositories::_init_repository::InitRepository;
 use crate::repositories::migration_repository::{MigrationRepository, Migration};
 
 
-const TABLE   : &str   = "logs";
-const INDEXES: &[&str] = &["level", "created_at"];
-const DESCRIPTION: Option<&str> = Some("Migration to create the logs table");
-const MIGRATION_NAME : &str = "create_logs";
+const TABLE   : &str   = "users";
+const INDEXES: &[&str] = &["login", "email", "created_at"];
+const DESCRIPTION: Option<&str> = Some("Migration to create the users table");
+const MIGRATION_NAME : &str = "create_users";
+
 
 pub async fn run(repo: &DatabaseQuery) -> Result<()> {
     println!("Running migration '{}'...", MIGRATION_NAME);
@@ -30,39 +31,36 @@ pub async fn run(repo: &DatabaseQuery) -> Result<()> {
 }
 
 
-/// Migration pour créer la table "posts" et ajouter des index
+/// users pour créer la table "posts" et ajouter des index
 pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
-    println!("Running migration to create logs table...");
-
     let table_fields = r#"
-        id          UUID PRIMARY KEY,
-        level       INT NOT NULL,
-        message     TEXT NOT NULL,
-        context     TEXT,
-        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    id          UUID PRIMARY KEY,
+                    login       TEXT,
+                    birthday    TEXT,
+                    firstname   TEXT,
+                    lastname    TEXT,
+                    sexe        TEXT,
+                    age         INTEGER,
+                    info        TEXT,
+                    email       TEXT,
+                    files_info  TEXT,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     "#;
 
     // Création de la table posts
-    repo.create_tables(TABLE, table_fields).await?;
+    repo.create_tables(TABLE,table_fields).await?;
 
 
     // Création des index
     repo.create_indexes(TABLE, INDEXES.to_vec()).await?;
 
-    println!("Migration to create logs table completed successfully.");
-   
-   Ok(())
+    Ok(())
 }
 
 pub async fn rollback(repo: &DatabaseQuery) -> Result<()> {
-    println!("Rolling back migration by dropping logs table...");
-
-
     // Suppression de la table posts
     repo.drop_indexes(TABLE, INDEXES.to_vec()).await?;
     repo.drop_table(TABLE).await?;
-
-    println!("Rollback completed successfully.");
     Ok(())
 }

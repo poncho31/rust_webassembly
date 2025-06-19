@@ -190,7 +190,7 @@ async fn start_full_web_server() -> std::io::Result<()> {
 
     // Initialisation de la base de données
     println!("🗄️ Initializing database connection...");
-    let db_pool = match core::init_db().await {
+    let db_pool = match core::_database::init_db().await {
         Ok(pool) => {
             println!("✅ Database connection established successfully");
             pool

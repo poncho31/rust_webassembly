@@ -2,7 +2,7 @@ use sqlx::{query, PgPool, Row};
 use anyhow::{Error, Result};
 use uuid::Uuid;
 use time::OffsetDateTime;
-use crate::{repositories::_database_query::DatabaseQuery};
+use crate::{repositories::_database::DatabaseQuery};
 use std::collections::HashMap;
 use std::fs;
 
@@ -14,66 +14,6 @@ impl InitRepository {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
-
-    /// Initialise la table des utilisateurs
-    pub async fn init_users_table(&self) -> Result<()> {
-        println!("Initializing user tables...");
-
-        // Création table;
-        DatabaseQuery::new(self.pool.clone()).run_query(
-            r#"
-                CREATE TABLE IF NOT EXISTS users (
-                    id          UUID PRIMARY KEY,
-                    login       TEXT,
-                    birthday    TEXT,
-                    firstname   TEXT,
-                    lastname    TEXT,
-                    sexe        TEXT,
-                    age         INTEGER,
-                    info        TEXT,
-                    email       TEXT,
-                    files_info  TEXT,
-                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-        "#
-        ).await?;
-
-        // Création des indexes
-        let indexes = vec!["login", "email", "created_at"];
-        DatabaseQuery::new(self.pool.clone()).create_indexes("users", indexes).await?;
-
-        // End
-        println!("Database table initialized successfully");
-        Ok(())
-    }
-
-
-    /// Initialise la table des migrations
-    pub async fn init_migration_table(&self) -> Result<()> {
-        println!("Initializing migration tables...");
-        
-        DatabaseQuery::new(self.pool.clone()).run_query(
-            r#"
-                CREATE TABLE IF NOT EXISTS migration (
-                    id          SERIAL PRIMARY KEY NOT NULL,
-                    name        TEXT NOT NULL UNIQUE,
-                    description TEXT,
-                    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-            "#
-        ).await?;
-
-        // Création des indexes
-        let indexes = vec!["created_at"];
-        DatabaseQuery::new(self.pool.clone()).create_indexes("migration", indexes).await?;
-
-        // End
-        println!("Database migration initialized successfully");
-        Ok(())
-    }
-
 
     // Méthode pour initialiser un repository à partir d'une structure de table
     pub async fn init_repository(&self, repository_name: &str, table_schema: &str) -> Result<()> {
@@ -88,14 +28,21 @@ impl InitRepository {
         // Définir le chemin du fichier
         let file_path = format!("core/src/repositories/{}_repository.rs", repository_name);
         
-        // Écrire le code dans un fichier
-        std::fs::write(&file_path, repository_code)
-            .map_err(|e| Error::msg(format!("Failed to write repository file: {}", e)))?;
-        
-        // Mettre à jour le fichier mod.rs pour inclure le nouveau module
-        self.update_mod_rs(repository_name)?;
-        
-        println!("Repository {} initialized successfully", repository_name);
+        // vérifier que le fichier n'existe pas déjà
+        if !fs::metadata(&file_path).is_ok() {
+            // Écrire le code dans un fichier
+            std::fs::write(&file_path, repository_code)
+                .map_err(|e| Error::msg(format!("Failed to write repository file: {}", e)))?;
+            
+            // Mettre à jour le fichier mod.rs pour inclure le nouveau module
+            self.update_mod_rs(repository_name)?;
+            
+            println!("Repository {} initialized successfully", repository_name);
+        }
+        else{
+            println!("Repository {} already exists", repository_name);
+        }
+
         Ok(())
     }
     
