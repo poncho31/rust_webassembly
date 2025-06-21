@@ -265,11 +265,17 @@ echo [INFO] Fichier: app\build\outputs\apk\debug\app-debug.apk
 echo [INFO] ========================================
 
 REM Optionnel : installer sur un appareil connecté
-set /p INSTALL="Installer sur l'appareil connecté ? (y/n): "
-if /i "%INSTALL%"=="y" (
-    echo [INFO] Installation sur l'appareil...
-    "%ANDROID_HOME%\platform-tools\adb" install -r "app\build\outputs\apk\debug\app-debug.apk"
-)
+echo [INFO] Installation sur l'appareil...
+"%ANDROID_HOME%\platform-tools\adb" install -r "app\build\outputs\apk\debug\app-debug.apk"
+
+
+echo Starting app...
+adb shell am start -n com.webassembly.unified/.MainActivity
+
+echo Monitoring logs (Ctrl+C to stop)...
+adb logcat -c
+adb logcat -s WebAssemblyApp
+
 
 pause
 goto :eof
