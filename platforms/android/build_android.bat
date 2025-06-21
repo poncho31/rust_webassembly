@@ -195,6 +195,61 @@ if not exist "gradle\wrapper\gradle-wrapper.jar" (
     echo [INFO] Gradle Wrapper trouvé
 )
 
+
+
+echo ========================================
+echo   COPIE DES FICHIERS STATIQUES CLIENT
+echo ========================================
+
+REM Variables
+set SOURCE_STATIC_DIR=%~dp0..\..\client\static
+set ASSETS_STATIC_DIR=%~dp0app\src\main\assets\static
+set ASSETS_PKG_DIR=%~dp0app\src\main\assets\static\pkg
+
+echo Source : %SOURCE_STATIC_DIR%
+echo Destination : %ASSETS_STATIC_DIR%
+
+REM Créer les répertoires assets si ils n'existent pas
+if not exist "%ASSETS_STATIC_DIR%" (
+    mkdir "%ASSETS_STATIC_DIR%"
+    echo Répertoire assets/static créé
+)
+
+if not exist "%ASSETS_PKG_DIR%" (
+    mkdir "%ASSETS_PKG_DIR%"
+    echo Répertoire assets/static/pkg créé
+)
+
+REM Supprimer les anciens fichiers
+echo Nettoyage des anciens fichiers...
+del /q /s "%ASSETS_STATIC_DIR%\*" 2>nul
+rmdir /s /q "%ASSETS_STATIC_DIR%" 2>nul
+mkdir "%ASSETS_STATIC_DIR%"
+mkdir "%ASSETS_PKG_DIR%"
+
+REM Copier tous les fichiers statiques
+echo Copie des fichiers statiques...
+xcopy /E /I /Y "%SOURCE_STATIC_DIR%\*" "%ASSETS_STATIC_DIR%\"
+
+if errorlevel 1 (
+    echo [ERREUR] Échec de la copie des fichiers statiques
+    pause
+    exit /b 1
+)
+
+echo [OK] Fichiers statiques copiés avec succès
+echo.
+echo Fichiers copiés dans assets/static :
+dir /b "%ASSETS_STATIC_DIR%"
+echo.
+
+echo ========================================
+echo COPIE TERMINÉE !
+echo ========================================
+
+
+
+
 REM Construire l'APK
 echo [INFO] Construction de l'APK Android...
 call gradlew assembleDebug
@@ -218,6 +273,8 @@ if /i "%INSTALL%"=="y" (
 
 pause
 goto :eof
+
+
 
 :clean
 echo [INFO] ========================================
