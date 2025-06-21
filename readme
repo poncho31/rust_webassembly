@@ -6,7 +6,7 @@
 WebAssembly_Development:
   Local_Development:
     - Run command: >
-        cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo run"
+        cmd /c "cd client & wasm-pack build --target web --out-dir static/pkg & cd .. & cargo build --release & .\target\release\server.exe"
         
   Docker_Deployment:
     - Run command: >

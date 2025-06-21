@@ -1,0 +1,17 @@
+# Outils installés localement
+local-cargo/
+local-rustup/
+android-sdk/
+jdk17/
+gradle-temp/
+*.zip
+
+# Build Android
+app/build/
+app/src/main/jniLibs/
+.gradle/
+build/
+
+# Fichiers temporaires
+*.tmp
+*.log

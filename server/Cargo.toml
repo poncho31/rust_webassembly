@@ -5,7 +5,7 @@ edition = "2021"
 
 # Library target for Android builds
 [lib]
-name = "server"
+name = "server_lib"
 crate-type = ["cdylib", "rlib"]
 
 # Binary target for standalone execution

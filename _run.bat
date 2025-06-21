@@ -1,21 +1,30 @@
 @echo off
-REM Charger les variables du .env dans l'environnement
-for /f "usebackq tokens=1,2 delims==" %%A in (".env") do (
-    if not "%%A"=="" set %%A=%%B
-)
+setlocal EnableDelayedExpansion
 
+REM Charger les variables du .env dans l'environnement, en ignorant les lignes vides et les commentaires
+for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
+    set "line=%%A"
+    echo !line! | findstr /b /r /c:"[a-zA-Z_]" >nul
+    if not errorlevel 1 (
+        set "%%A=%%B"
+    )
+)
 
 REM Vérifie si le premier argument est 'docker'
 if /i "%1"=="docker" (
-
     docker-compose down
     docker-compose up -d
 
     start "" %ALLOWED_ORIGIN_DOCKER%
     docker logs -f %APP_NAME_DOCKER%
 
-) else (
+) else if /i "%1"=="android" (
+    echo [INFO] Construction de l'APK Android...
+    cd platforms\android
+    call build_android.bat
+    cd ..\..
 
+) else (
     REM Vérifie la présence de cargo et installe Rust si manquant
     where cargo >nul 2>nul
     if errorlevel 1 (
@@ -41,27 +50,26 @@ if /i "%1"=="docker" (
     if /i "%1"=="force" (
         taskkill /f /im rust-analyzer.exe
         taskkill /f /im server.exe
-        
-        cargo clean     
-        del /q /s client\static\pkg\* 
+
+        cargo clean
+        del /q /s client\static\pkg\*
 
         echo [INFO] Projet nettoyé.
     )
-    
-    REM compile webassembly
+
+    REM Compilation WebAssembly
     cd client
     wasm-pack build --target web --out-dir static/pkg
-
-    REM compile le projet Rust
     cd ..
+
+    REM Compilation Rust
     cargo build --release
 
-    REM lancer la fenetre du navigateur
+    REM Lancement du navigateur
     start "" %ALLOWED_ORIGIN%
 
-    REM Démarrer le serveur
+    REM Lancement du serveur
     target\release\server.exe
 )
 
 pause
-

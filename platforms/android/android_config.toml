@@ -1,0 +1,22 @@
+[android]
+package_name = "com.webassembly.unified"
+app_name = "WebAssembly Unified"
+server_url = "http://localhost:8080"
+min_sdk = 21
+target_sdk = 34
+version_code = 1
+version_name = "1.0"
+
+[build]
+# Architectures à compiler (commentez celles non nécessaires pour accélérer le build)
+targets = [
+    "aarch64-linux-android",    # ARM64 (la plupart des appareils récents)
+    "armv7-linux-androideabi",  # ARM32 (appareils plus anciens)
+    "x86_64-linux-android",     # Émulateurs 64-bit
+    "i686-linux-android"        # Émulateurs 32-bit
+]
+
+[server]
+# Configuration pour le serveur embarqué (optionnel)
+embedded_port = 8080
+enable_embedded_server = false

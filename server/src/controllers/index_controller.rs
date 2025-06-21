@@ -5,8 +5,8 @@ use futures::StreamExt;
 use core::{HttpSendResponse, UserRepository, Table};
 use sqlx::PgPool;
 use std::collections::HashMap;
-use server::extract_form::{extract_form_field, save_uploaded_file};
-use server::models::form_response::FormResponse;
+use server_lib::extract_form::{extract_form_field, save_uploaded_file};
+use server_lib::models::form_response::FormResponse;
 use serde_json::{to_value, value, Value};
 
 /// Handles POST requests with multipart form data

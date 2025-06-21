@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "server",
     "client",
-    "core"
+    "core",
+    "platforms/android"
 ]
 
 [workspace.dependencies]
