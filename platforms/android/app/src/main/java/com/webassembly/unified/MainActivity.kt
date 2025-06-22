@@ -383,15 +383,31 @@ class MainActivity : AppCompatActivity() {
                 Log.e("WebAssemblyApp", "SMS failed: ${e.message}")
                 false
             }
-        }
-
-        @JavascriptInterface
+        }        @JavascriptInterface
         fun getLocation(): String {
             Log.d("WebAssemblyApp", "Getting location")
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
                 == PackageManager.PERMISSION_GRANTED) {
                 
-                return executeGetLocation()
+                val result = executeGetLocation()
+                
+                // Afficher le résultat dans un popup comme pour getDeviceInfo
+                runOnUiThread {
+                    try {
+                        val locationJson = JSONObject(result)
+                        if (locationJson.has("latitude") && locationJson.has("longitude")) {
+                            val lat = locationJson.getDouble("latitude")
+                            val lng = locationJson.getDouble("longitude")
+                            Toast.makeText(context, "Position: $lat, $lng", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Position non disponible", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Erreur de position: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                
+                return result
             } else {
                 Log.d("WebAssemblyApp", "Requesting location permission")
                 pendingAction = "getLocation"
@@ -629,10 +645,9 @@ class MainActivity : AppCompatActivity() {
                 
                 val result = networkInfo.toString()
                 Log.d("WebAssemblyApp", "Network info: $result")
-                result
-            } catch (e: Exception) {
-                Log.e("WebAssemblyApp", "Failed to get network info: ${e.message}")                
-                "${e.message}"
+                result            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to get network info: ${e.message}")
+                "{\"connected\": false, \"type\": \"Error\", \"error\": \"${e.message}\"}"
             }
         }
 
