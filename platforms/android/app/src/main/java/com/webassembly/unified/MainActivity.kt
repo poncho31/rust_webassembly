@@ -5,11 +5,15 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.hardware.Camera
 import android.location.LocationManager
 import android.media.MediaRecorder
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -537,13 +541,210 @@ class MainActivity : AppCompatActivity() {
             }
             Log.d("WebAssemblyApp", "Device info: $info")
             return info.toString()
-        }
-
-        @JavascriptInterface
+        }        @JavascriptInterface
         fun showToast(message: String) {
             Log.d("WebAssemblyApp", "Showing toast: $message")
             runOnUiThread {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun getBatteryLevel(): Int {
+            Log.d("WebAssemblyApp", "Getting battery level")
+            return try {
+                val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+                val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                Log.d("WebAssemblyApp", "Battery level: $batteryLevel%")
+                batteryLevel
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to get battery level: ${e.message}")
+                -1
+            }
+        }
+
+        @JavascriptInterface
+        fun getNetworkInfo(): String {
+            Log.d("WebAssemblyApp", "Getting network info")
+            return try {
+                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val networkInfo = JSONObject()
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val activeNetwork = connectivityManager.activeNetwork
+                    val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+                    
+                    if (networkCapabilities != null) {
+                        networkInfo.put("connected", true)
+                        
+                        when {
+                            networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
+                                networkInfo.put("type", "WiFi")
+                                networkInfo.put("isWiFi", true)
+                                networkInfo.put("isMobile", false)
+                            }
+                            networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
+                                networkInfo.put("type", "Mobile")
+                                networkInfo.put("isWiFi", false)
+                                networkInfo.put("isMobile", true)
+                            }
+                            networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> {
+                                networkInfo.put("type", "Ethernet")
+                                networkInfo.put("isWiFi", false)
+                                networkInfo.put("isMobile", false)
+                            }
+                            else -> {
+                                networkInfo.put("type", "Unknown")
+                                networkInfo.put("isWiFi", false)
+                                networkInfo.put("isMobile", false)
+                            }
+                        }
+                        
+                        networkInfo.put("isMetered", connectivityManager.isActiveNetworkMetered)
+                    } else {
+                        networkInfo.put("connected", false)
+                        networkInfo.put("type", "None")
+                        networkInfo.put("isWiFi", false)
+                        networkInfo.put("isMobile", false)
+                        networkInfo.put("isMetered", false)
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    val activeNetworkInfo = connectivityManager.activeNetworkInfo
+                    
+                    if (activeNetworkInfo?.isConnected == true) {
+                        networkInfo.put("connected", true)
+                        networkInfo.put("type", activeNetworkInfo.typeName)
+                        networkInfo.put("isWiFi", activeNetworkInfo.type == ConnectivityManager.TYPE_WIFI)
+                        networkInfo.put("isMobile", activeNetworkInfo.type == ConnectivityManager.TYPE_MOBILE)
+                        networkInfo.put("isMetered", connectivityManager.isActiveNetworkMetered)
+                    } else {
+                        networkInfo.put("connected", false)
+                        networkInfo.put("type", "None")
+                        networkInfo.put("isWiFi", false)
+                        networkInfo.put("isMobile", false)
+                        networkInfo.put("isMetered", false)
+                    }
+                }
+                
+                val result = networkInfo.toString()
+                Log.d("WebAssemblyApp", "Network info: $result")
+                result
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to get network info: ${e.message}")                
+                "${e.message}"
+            }
+        }
+
+        @JavascriptInterface
+        fun pickImage() {
+            Log.d("WebAssemblyApp", "Pick image called")
+            openGallery()
+        }
+
+        @JavascriptInterface
+        fun pickFile() {
+            Log.d("WebAssemblyApp", "Pick file called") 
+            openFile()
+        }
+
+        @JavascriptInterface
+        fun startGPS() {
+            Log.d("WebAssemblyApp", "Start GPS called")
+            getLocation()
+        }
+
+        @JavascriptInterface
+        fun recordAudio() {
+            Log.d("WebAssemblyApp", "Record audio called")
+            startRecording()
+        }
+
+        @JavascriptInterface
+        fun playSound(soundType: String) {
+            Log.d("WebAssemblyApp", "Playing sound: $soundType")
+            try {
+                // Simple vibration as sound feedback
+                vibrate(100)
+                Log.d("WebAssemblyApp", "Sound played via vibration")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to play sound: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun showNotification(title: String, message: String) {
+            Log.d("WebAssemblyApp", "Showing notification: $title - $message")
+            runOnUiThread {
+                Toast.makeText(context, "$title: $message", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun makeCall(phoneNumber: String) {
+            Log.d("WebAssemblyApp", "Making call to: $phoneNumber")
+            try {
+                val intent = Intent(Intent.ACTION_DIAL).apply {
+                    data = Uri.parse("tel:$phoneNumber")
+                }
+                startActivity(intent)
+                Log.d("WebAssemblyApp", "Call intent launched")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to make call: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun sendEmail(email: String, subject: String, body: String) {
+            Log.d("WebAssemblyApp", "Sending email to: $email")
+            try {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("mailto:")
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(email))
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                }
+                startActivity(intent)
+                Log.d("WebAssemblyApp", "Email intent launched")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to send email: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun shareContent(content: String, mimeType: String) {
+            Log.d("WebAssemblyApp", "Sharing content: $content")
+            try {
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = mimeType
+                    putExtra(Intent.EXTRA_TEXT, content)
+                }
+                startActivity(Intent.createChooser(intent, "Partager via"))
+                Log.d("WebAssemblyApp", "Share intent launched")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to share content: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun openBrowser(url: String) {
+            Log.d("WebAssemblyApp", "Opening browser with URL: $url")
+            try {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse(url)
+                }
+                startActivity(intent)
+                Log.d("WebAssemblyApp", "Browser intent launched")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Failed to open browser: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun closeApp() {
+            Log.d("WebAssemblyApp", "Closing application")
+            runOnUiThread {
+                finish()
             }
         }
     }
