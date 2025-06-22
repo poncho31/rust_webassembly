@@ -1,3 +1,11 @@
+// Exécuter quand le DOM est prêt
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAndroid);
+} else {
+    initAndroid();
+}
+
+
 function initAndroid() {
     // Vérification si Android est disponible
     if (window.Android) {
@@ -216,9 +224,3 @@ function initAndroid() {
     }
 }
 
-// Exécuter quand le DOM est prêt
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAndroid);
-} else {
-    initAndroid();
-}
