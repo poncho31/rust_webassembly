@@ -1,0 +1,20 @@
+.display_android{
+    display: block;
+}
+.android_button{
+    background: #2196F3; 
+    color: white; 
+    border: none; 
+    border-radius: 50px; 
+    padding: 15px; 
+    font-size: 16px; 
+    cursor: pointer; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.is_android{
+    display: none;
+    position: fixed; 
+    top: 10px; 
+    right: 10px; 
+    z-index: 1000;
+}

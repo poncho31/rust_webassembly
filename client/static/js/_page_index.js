@@ -26,6 +26,8 @@ function setupFileDisplay() {
         });
     }
 }            // Initialiser après le chargement du DOM
-document.addEventListener('DOMContentLoaded', setupFileDisplay);            // Table form_data gérée entièrement par WebAssembly Rust
+document.addEventListener('DOMContentLoaded', setupFileDisplay);  // Table form_data gérée entièrement par WebAssembly Rust
 // (rafraîchissement automatique configuré dans lib.rs)
 init();
+
+
