@@ -159,9 +159,8 @@ echo [INFO] Checking Android SDK components...
 if not exist "%ANDROID_HOME%\platform-tools" (
     echo [INFO] Accepting licenses and installing SDK components...
     call accept_all_licenses.bat
-    
-    echo [INFO] Installing necessary SDK components...
-    "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager" "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+      echo [INFO] Installing necessary SDK components...
+    "%ANDROID_HOME%\cmdline-tools\latest\bin\sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
     
     if errorlevel 1 (
         echo [ERROR] Failed to install SDK components
@@ -276,11 +275,11 @@ echo [INFO] Checking Gradle Wrapper...
 if not exist "gradle\wrapper\gradle-wrapper.jar" (
     echo [INFO] Downloading Gradle Wrapper...
     if not exist "gradle\wrapper" mkdir "gradle\wrapper"
-    powershell -Command "Invoke-WebRequest -Uri 'https://services.gradle.org/distributions/gradle-8.0-bin.zip' -OutFile 'gradle-8.0-bin.zip'"
-    powershell -Command "Expand-Archive -Path 'gradle-8.0-bin.zip' -DestinationPath 'gradle-temp' -Force"
-    copy /Y "gradle-temp\gradle-8.0\lib\gradle-wrapper.jar" "gradle\wrapper\"
+    powershell -Command "Invoke-WebRequest -Uri 'https://services.gradle.org/distributions/gradle-8.5-bin.zip' -OutFile 'gradle-8.5-bin.zip'"
+    powershell -Command "Expand-Archive -Path 'gradle-8.5-bin.zip' -DestinationPath 'gradle-temp' -Force"
+    copy /Y "gradle-temp\gradle-8.5\lib\gradle-wrapper.jar" "gradle\wrapper\"
     rmdir /s /q gradle-temp
-    del gradle-8.0-bin.zip
+    del gradle-8.5-bin.zip
     echo [OK] Gradle Wrapper installed locally
 ) else (
     echo [OK] Gradle Wrapper found

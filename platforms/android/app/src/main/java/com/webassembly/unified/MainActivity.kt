@@ -1,817 +1,617 @@
 package com.webassembly.unified
 
-import android.os.Bundle
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.webkit.JavascriptInterface
-import android.app.Activity
-import android.util.Log
-import android.webkit.WebSettings
-import android.content.Intent
-import android.provider.MediaStore
-import android.graphics.Bitmap
-import android.content.pm.PackageManager
 import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.hardware.Camera
+import android.location.LocationManager
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.os.Environment
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.provider.MediaStore
+import android.telephony.SmsManager
+import android.util.Log
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.WindowManager
+import android.webkit.*
+import android.widget.FrameLayout
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import android.widget.Toast
-import android.net.Uri
-import android.os.Vibrator
-import android.os.VibrationEffect
-import android.os.Build
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import androidx.core.app.NotificationCompat
-import android.location.LocationManager
-import android.location.Location
-import android.location.LocationListener
-import android.os.BatteryManager
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.telephony.SmsManager
-import android.media.MediaRecorder
-import android.media.MediaPlayer
-import android.os.Environment
+import androidx.core.content.FileProvider
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import android.content.ActivityNotFoundException
+import java.text.SimpleDateFormat
+import java.util.*
 
-class MainActivity : Activity() {
+class MainActivity : AppCompatActivity() {
     
     private lateinit var webView: WebView
-    
-    // Request codes
-    private val CAMERA_REQUEST = 1888
-    private val VIDEO_REQUEST = 1889
-    private val PICK_IMAGE_REQUEST = 1890
-    private val PICK_FILE_REQUEST = 1891
-    private val AUDIO_REQUEST = 1892
-    
-    // Permission codes
-    private val CAMERA_PERMISSION_CODE = 100
-    private val LOCATION_PERMISSION_CODE = 101
-    private val WRITE_STORAGE_PERMISSION_CODE = 102
-    private val RECORD_AUDIO_PERMISSION_CODE = 103
-    private val SMS_PERMISSION_CODE = 104
-    private val CALL_PERMISSION_CODE = 105
-    
-    // Notification
-    private val NOTIFICATION_CHANNEL_ID = "WebAssembly_Channel"
-    private val NOTIFICATION_ID = 1001
-    
-    // Media recorder
     private var mediaRecorder: MediaRecorder? = null
-    private var audioFilePath: String? = null
+    private var camera: Camera? = null
+    private var previewLayout: FrameLayout? = null
     private var isRecording = false
+    private var outputFile: File? = null
+    private var photoFile: File? = null
     
-    // Location
-    private var locationManager: LocationManager? = null
-    private var locationListener: LocationListener? = null
+    // Variables pour mémoriser les actions en attente de permission
+    private var pendingAction: String? = null
+    private var pendingSmsNumber: String? = null
+    private var pendingSmsMessage: String? = null
+      // Request codes
+    private val CAMERA_REQUEST_CODE = 100
+    private val STORAGE_REQUEST_CODE = 101
+    private val LOCATION_REQUEST_CODE = 102
+    private val MICROPHONE_REQUEST_CODE = 103
+    private val SMS_REQUEST_CODE = 104
+    private val PICK_IMAGE_REQUEST = 1
+    private val CAMERA_CAPTURE_REQUEST = 2
     
-    companion object {
-        private const val TAG = "WebAssemblyApp"
-        
-        init {
-            System.loadLibrary("webassembly_android")
-        }
-    }
-    
-    // Native methods
-    private external fun initRust(): Boolean
-    private external fun getServerUrl(): String
-    private external fun handleWebViewMessage(message: String): String
-    private external fun startEmbeddedServer(port: Int): Boolean    
-      override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        Log.i(TAG, "=== APP STARTING ===")
-        Log.i(TAG, "Android Version: ${android.os.Build.VERSION.SDK_INT}")
-        Log.i(TAG, "App Package: ${packageName}")
-        
-        // Initialize notification channel
-        createNotificationChannel()
-        
-        // Initialize Rust backend
-        try {
-            Log.i(TAG, "Attempting to initialize Rust backend...")
-            if (initRust()) {
-                Log.i(TAG, "✅ Rust backend initialized successfully")
-                
-                // Start embedded server before loading WebView
-                Log.i(TAG, "Attempting to start embedded server on port 8088...")
-                if (startEmbeddedServer(8080)) {
-                    Log.i(TAG, "✅ Embedded server started successfully on port 8088")
-                    
-                    // Create and configure WebView after server is ready
-                    webView = WebView(this)
-                    setupWebView()
-                    setContentView(webView)
-                    
-                    // Load HTML after server is running
-                    loadLocalHtml()
-                } else {
-                    Log.e(TAG, "❌ Failed to start embedded server")
-                    showError("Failed to start embedded server")
-                }
-            } else {
-                Log.e(TAG, "❌ Failed to initialize Rust backend")
-                showError("Failed to initialize Rust backend")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception during initialization: ${e.message}", e)
-            showError("Initialization error: ${e.message}")
-        }
-    }
-    
-    private fun showError(message: String) {
-        Log.e(TAG, "Showing error: $message")
-        // Create a simple error display
-        webView = WebView(this)
-        setContentView(webView)
-        val errorHtml = """
-            <html><body style="font-family: Arial; padding: 20px; background: #ffebee;">
-            <h1 style="color: #d32f2f;">❌ Error</h1>
-            <p><strong>$message</strong></p>
-            <p>Check Android logs for details:</p>
-            <pre>adb logcat | grep WebAssemblyApp</pre>
-            </body></html>
-        """.trimIndent()
-        webView.loadData(errorHtml, "text/html", "UTF-8")
-    }
-    
-    private fun setupWebView() {
-        webView.webViewClient = WebViewClient()
-        val settings: WebSettings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.allowFileAccess = true
-        settings.allowContentAccess = true
-        settings.setAllowFileAccessFromFileURLs(true)
-        settings.setAllowUniversalAccessFromFileURLs(true)
-        settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-        settings.loadsImagesAutomatically = true
-        settings.blockNetworkImage = false
-        settings.blockNetworkLoads = false
-        
-        // Add JavaScript interface to communicate with Rust
-        webView.addJavascriptInterface(WebAppInterface(), "Android")
-    }    
-      private fun loadLocalHtml() {
-        try {
-            val inputStream = assets.open("static/index.html")
-            val htmlContent = inputStream.bufferedReader().use { it.readText() }
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show()
+            Log.d("WebAssemblyApp", "Permission granted - executing pending action: $pendingAction")
             
-            webView.loadDataWithBaseURL("file:///android_asset/static/", htmlContent, "text/html", "UTF-8", null)
-            Log.i(TAG, "Loading index.html and static assets from assets")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading index.html: ${e.message}")
-            // Fallback to direct URL loading
-            webView.loadUrl("file:///android_asset/static/index.html")
-        }
-    }
-    
-    // ========== NOTIFICATION SETUP ==========
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                "WebAssembly Notifications",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            channel.description = "Notifications from WebAssembly App"
-            
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-    
-    // ========== PERMISSION CHECKS ==========
-    private fun checkCameraPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun checkLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun checkStoragePermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun checkAudioPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun checkSmsPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun checkCallPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    // ========== PERMISSION REQUESTS ==========
-    private fun requestCameraPermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
-    }
-    
-    private fun requestLocationPermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ), LOCATION_PERMISSION_CODE)
-    }
-    
-    private fun requestStoragePermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        ), WRITE_STORAGE_PERMISSION_CODE)
-    }
-    
-    private fun requestAudioPermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), RECORD_AUDIO_PERMISSION_CODE)
-    }
-    
-    private fun requestSmsPermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.SEND_SMS), SMS_PERMISSION_CODE)
-    }
-    
-    private fun requestCallPermission() {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CALL_PHONE), CALL_PERMISSION_CODE)
-    }
-    
-    // ========== CAMERA AND MEDIA ==========
-    private fun openCamera() {
-        val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if (cameraIntent.resolveActivity(packageManager) != null) {
-            startActivityForResult(cameraIntent, CAMERA_REQUEST)
-        } else {
-            Toast.makeText(this, "Aucune application caméra trouvée", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun recordVideo() {
-        val videoIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-        if (videoIntent.resolveActivity(packageManager) != null) {
-            startActivityForResult(videoIntent, VIDEO_REQUEST)
-        } else {
-            Toast.makeText(this, "Aucune application vidéo trouvée", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun pickImage() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, PICK_IMAGE_REQUEST)
-    }
-    
-    private fun pickFile() {
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-        intent.type = "*/*"
-        intent.addCategory(Intent.CATEGORY_OPENABLE)
-        startActivityForResult(Intent.createChooser(intent, "Choisir un fichier"), PICK_FILE_REQUEST)
-    }
-    
-    // ========== LOCATION ==========
-    private fun getCurrentLocation() {
-        if (!checkLocationPermission()) {
-            requestLocationPermission()
-            return
-        }
-        
-        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        locationListener = object : LocationListener {
-            override fun onLocationChanged(location: Location) {
-                val lat = location.latitude
-                val lng = location.longitude
-                val accuracy = location.accuracy
-                
-                webView.evaluateJavascript(
-                    "if(window.onLocationReceived) window.onLocationReceived($lat, $lng, $accuracy);",
-                    null
-                )
-                Toast.makeText(this@MainActivity, "Position: $lat, $lng", Toast.LENGTH_SHORT).show()
-                locationManager?.removeUpdates(this)
-            }
-            
-            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-            override fun onProviderEnabled(provider: String) {}
-            override fun onProviderDisabled(provider: String) {}
-        }
-        
-        try {
-            locationManager?.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                1000L,
-                1f,
-                locationListener!!
-            )
-        } catch (e: SecurityException) {
-            Toast.makeText(this, "Erreur d'accès à la localisation", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    // ========== DEVICE INFO ==========
-    private fun getBatteryLevel(): Int {
-        val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-        return batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-    }
-    
-    private fun getNetworkInfo(): String {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork
-        val capabilities = connectivityManager.getNetworkCapabilities(network)
-        
-        return when {
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "WiFi"
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "Mobile"
-            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true -> "Ethernet"
-            else -> "Déconnecté"
-        }
-    }
-    
-    private fun getDeviceInfo(): String {
-        return "Modèle: ${Build.MODEL}, Android: ${Build.VERSION.RELEASE}, SDK: ${Build.VERSION.SDK_INT}"
-    }
-    
-    // ========== AUDIO ==========
-    private fun startAudioRecording() {
-        if (!checkAudioPermission()) {
-            requestAudioPermission()
-            return
-        }
-        
-        if (isRecording) {
-            stopAudioRecording()
-            return
-        }
-        
-        try {
-            audioFilePath = "${externalCacheDir?.absolutePath}/audio_record.3gp"
-            mediaRecorder = MediaRecorder().apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
-                setOutputFile(audioFilePath)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-                prepare()
-                start()
-            }
-            isRecording = true
-            Toast.makeText(this, "Enregistrement audio démarré", Toast.LENGTH_SHORT).show()
-        } catch (e: IOException) {
-            Log.e(TAG, "Erreur enregistrement audio: ${e.message}")
-            Toast.makeText(this, "Erreur enregistrement audio", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun stopAudioRecording() {
-        if (isRecording) {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            isRecording = false
-            Toast.makeText(this, "Enregistrement audio arrêté", Toast.LENGTH_SHORT).show()
-            
-            webView.evaluateJavascript(
-                "if(window.onAudioRecorded) window.onAudioRecorded('$audioFilePath');",
-                null
-            )
-        }
-    }
-    
-    private fun playSound() {
-        try {
-            val mediaPlayer = MediaPlayer.create(this, android.provider.Settings.System.DEFAULT_NOTIFICATION_URI)
-            mediaPlayer?.start()
-            mediaPlayer?.setOnCompletionListener { it.release() }
-        } catch (e: Exception) {
-            Log.e(TAG, "Erreur lecture son: ${e.message}")
-        }
-    }
-    
-    // ========== VIBRATION AND NOTIFICATIONS ==========
-    private fun vibrateDevice(duration: Long) {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(duration)
-        }
-    }
-    
-    private fun showNotification(title: String, message: String) {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-        
-        notificationManager.notify(NOTIFICATION_ID, notification)
-    }
-    
-    private fun showToast(message: String) {
-        runOnUiThread {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    // ========== COMMUNICATION ==========
-    private fun sendSms(phoneNumber: String, message: String) {
-        if (!checkSmsPermission()) {
-            requestSmsPermission()
-            return
-        }
-        
-        try {
-            val smsManager = SmsManager.getDefault()
-            smsManager.sendTextMessage(phoneNumber, null, message, null, null)
-            Toast.makeText(this, "SMS envoyé", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Log.e(TAG, "Erreur envoi SMS: ${e.message}")
-            Toast.makeText(this, "Erreur envoi SMS", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun makePhoneCall(phoneNumber: String) {
-        if (!checkCallPermission()) {
-            requestCallPermission()
-            return
-        }
-        
-        try {
-            val intent = Intent(Intent.ACTION_CALL)
-            intent.data = Uri.parse("tel:$phoneNumber")
-            startActivity(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Erreur appel: ${e.message}")
-            Toast.makeText(this, "Erreur lors de l'appel", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun sendEmail(recipient: String, subject: String, body: String) {
-        try {
-            val intent = Intent(Intent.ACTION_SENDTO)
-            intent.data = Uri.parse("mailto:")
-            intent.putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
-            intent.putExtra(Intent.EXTRA_SUBJECT, subject)
-            intent.putExtra(Intent.EXTRA_TEXT, body)
-            
-            if (intent.resolveActivity(packageManager) != null) {
-                startActivity(intent)
-            } else {
-                Toast.makeText(this, "Aucune application email trouvée", Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Erreur envoi email: ${e.message}")
-            Toast.makeText(this, "Erreur envoi email", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    // ========== SYSTEM ==========
-    private fun shareContent(content: String) {
-        val intent = Intent(Intent.ACTION_SEND)
-        intent.type = "text/plain"
-        intent.putExtra(Intent.EXTRA_TEXT, content)
-        startActivity(Intent.createChooser(intent, "Partager via"))
-    }
-    
-    private fun openBrowser(url: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, "Aucun navigateur trouvé", Toast.LENGTH_SHORT).show()
-        }
-    }
-    
-    private fun saveFile(fileName: String, content: String) {
-        if (!checkStoragePermission()) {
-            requestStoragePermission()
-            return
-        }
-        
-        try {
-            val file = File(externalCacheDir, fileName)
-            FileOutputStream(file).use { fos ->
-                fos.write(content.toByteArray())
-            }
-            Toast.makeText(this, "Fichier sauvegardé: ${file.absolutePath}", Toast.LENGTH_SHORT).show()
-            
-            webView.evaluateJavascript(
-                "if(window.onFileSaved) window.onFileSaved('${file.absolutePath}');",
-                null
-            )
-        } catch (e: IOException) {
-            Log.e(TAG, "Erreur sauvegarde: ${e.message}")
-            Toast.makeText(this, "Erreur sauvegarde fichier", Toast.LENGTH_SHORT).show()        }
-    }
-    
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when (requestCode) {
-            CAMERA_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    openCamera()
-                } else {
-                    Toast.makeText(this, "Permission caméra refusée", Toast.LENGTH_SHORT).show()
+            // Exécuter l'action en attente
+            when (pendingAction) {
+                "takePhoto" -> {
+                    pendingAction = null
+                    findViewById<WebView>(R.id.webview).post {
+                        (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeCamera()
+                            ?: WebAppInterface(this).executeCamera()
+                    }
                 }
-            }
-            LOCATION_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    getCurrentLocation()
-                } else {
-                    Toast.makeText(this, "Permission localisation refusée", Toast.LENGTH_SHORT).show()
+                "recordVideo" -> {
+                    pendingAction = null
+                    findViewById<WebView>(R.id.webview).post {
+                        (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeVideoRecording()
+                            ?: WebAppInterface(this).executeVideoRecording()
+                    }
                 }
-            }
-            WRITE_STORAGE_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permission stockage accordée", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Permission stockage refusée", Toast.LENGTH_SHORT).show()
+                "startRecording" -> {
+                    pendingAction = null
+                    findViewById<WebView>(R.id.webview).post {
+                        (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeAudioRecording()
+                            ?: WebAppInterface(this).executeAudioRecording()
+                    }
                 }
-            }
-            RECORD_AUDIO_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    startAudioRecording()
-                } else {
-                    Toast.makeText(this, "Permission audio refusée", Toast.LENGTH_SHORT).show()
+                "sendSMS" -> {
+                    pendingAction = null
+                    if (pendingSmsNumber != null && pendingSmsMessage != null) {
+                        findViewById<WebView>(R.id.webview).post {
+                            (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeSendSMS(pendingSmsNumber!!, pendingSmsMessage!!)
+                                ?: WebAppInterface(this).executeSendSMS(pendingSmsNumber!!, pendingSmsMessage!!)
+                        }
+                        pendingSmsNumber = null
+                        pendingSmsMessage = null
+                    }
                 }
-            }
-            SMS_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permission SMS accordée", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Permission SMS refusée", Toast.LENGTH_SHORT).show()
-                }
-            }
-            CALL_PERMISSION_CODE -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permission appel accordée", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Permission appel refusée", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
-    
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        when (requestCode) {
-            CAMERA_REQUEST -> {
-                if (resultCode == RESULT_OK) {
-                    val photo = data?.extras?.get("data") as? Bitmap
-                    if (photo != null) {
-                        Log.i(TAG, "Photo prise avec succès")
-                        webView.evaluateJavascript(
-                            "if(window.onPhotoTaken) window.onPhotoTaken('Photo prise avec succès');",
-                            null
-                        )
-                        Toast.makeText(this, "Photo prise !", Toast.LENGTH_SHORT).show()
+                "getLocation" -> {
+                    pendingAction = null
+                    findViewById<WebView>(R.id.webview).post {
+                        val location = (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeGetLocation()
+                            ?: WebAppInterface(this).executeGetLocation()
+                        webView.evaluateJavascript("window.handleLocationResult('$location');", null)
                     }
                 }
             }
-            VIDEO_REQUEST -> {
-                if (resultCode == RESULT_OK) {
-                    Log.i(TAG, "Vidéo enregistrée avec succès")
-                    webView.evaluateJavascript(
-                        "if(window.onVideoRecorded) window.onVideoRecorded('Vidéo enregistrée avec succès');",
-                        null
-                    )
-                    Toast.makeText(this, "Vidéo enregistrée !", Toast.LENGTH_SHORT).show()
-                }
-            }
-            PICK_IMAGE_REQUEST -> {
-                if (resultCode == RESULT_OK && data != null) {
-                    val selectedImageUri = data.data
-                    Log.i(TAG, "Image sélectionnée: $selectedImageUri")
-                    webView.evaluateJavascript(
-                        "if(window.onImagePicked) window.onImagePicked('$selectedImageUri');",
-                        null
-                    )
-                    Toast.makeText(this, "Image sélectionnée !", Toast.LENGTH_SHORT).show()
-                }
-            }
-            PICK_FILE_REQUEST -> {
-                if (resultCode == RESULT_OK && data != null) {
-                    val selectedFileUri = data.data
-                    Log.i(TAG, "Fichier sélectionné: $selectedFileUri")
-                    webView.evaluateJavascript(
-                        "if(window.onFilePicked) window.onFilePicked('$selectedFileUri');",
-                        null
-                    )
-                    Toast.makeText(this, "Fichier sélectionné !", Toast.LENGTH_SHORT).show()
-                }
-            }
+        } else {
+            Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
+            Log.d("WebAssemblyApp", "Permission denied")
+            pendingAction = null
+            pendingSmsNumber = null
+            pendingSmsMessage = null
         }
     }
-    
-    inner class WebAppInterface {
-        @JavascriptInterface
-        fun sendMessage(message: String): String {
-            Log.d(TAG, "Received message from JavaScript: $message")
-            return handleWebViewMessage(message)
-        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.d("WebAssemblyApp", "MainActivity onCreate started")
         
+        // Keep screen on
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
+        setContentView(R.layout.activity_main)
+        
+        setupWebView()
+        setupBackPressedHandler()
+        
+        Log.d("WebAssemblyApp", "MainActivity onCreate completed")
+    }
+
+    private fun setupWebView() {
+        Log.d("WebAssemblyApp", "Setting up WebView")
+        webView = findViewById(R.id.webview)
+        
+        // Enable JavaScript and other settings
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            databaseEnabled = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+              // Modern alternatives to deprecated methods
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                allowFileAccessFromFileURLs = true
+                allowUniversalAccessFromFileURLs = true
+            }
+            
+            // Enable debugging for WebView
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                WebView.setWebContentsDebuggingEnabled(true)
+            }
+        }
+
+        // Add JavaScript interface
+        webView.addJavascriptInterface(WebAppInterface(this), "Android")
+        
+        // Set WebView client
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                Log.d("WebAssemblyApp", "Loading URL: ${request?.url}")
+                return false
+            }
+            
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Log.d("WebAssemblyApp", "Page finished loading: $url")
+            }
+            
+            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                super.onReceivedError(view, request, error)
+                Log.e("WebAssemblyApp", "WebView error: ${error?.description}")
+            }
+        }
+
+        // Set WebChromeClient for console logs and other features
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                Log.d("WebAssemblyApp", "Console: ${consoleMessage?.message()} at ${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}")
+                return true
+            }
+            
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                Log.d("WebAssemblyApp", "Permission request: ${request?.resources?.joinToString()}")
+                request?.grant(request.resources)
+            }
+        }
+
+        // Load the main page
+        loadMainPage()
+    }
+
+    private fun setupBackPressedHandler() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    finish()
+                }
+            }
+        })
+    }
+
+    private fun loadMainPage() {
+        val assetPath = "file:///android_asset/static/index.html"
+        Log.d("WebAssemblyApp", "Loading main page: $assetPath")
+        webView.loadUrl(assetPath)
+    }
+
+    inner class WebAppInterface(private val context: Context) {
+
         @JavascriptInterface
         fun log(message: String) {
-            Log.d(TAG, "JS Log: $message")
+            Log.d("WebAssemblyApp", "JS Log: $message")
         }
-        
-        // ========== CAMERA AND MEDIA ==========
+
         @JavascriptInterface
-        fun takePhoto() {
-            Log.d(TAG, "Camera button clicked from JavaScript")
-            runOnUiThread {
-                if (checkCameraPermission()) {
-                    openCamera()
-                } else {
-                    requestCameraPermission()
+        fun error(message: String) {
+            Log.e("WebAssemblyApp", "JS Error: $message")
+        }
+
+        @JavascriptInterface
+        fun warn(message: String) {
+            Log.w("WebAssemblyApp", "JS Warning: $message")
+        }
+
+        @JavascriptInterface
+        fun info(message: String) {
+            Log.i("WebAssemblyApp", "JS Info: $message")
+        }
+
+        @JavascriptInterface
+        fun requestPermission(permission: String) {
+            Log.d("WebAssemblyApp", "Requesting permission: $permission")
+            when (permission) {
+                "camera" -> requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                "microphone" -> requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                "location" -> requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                "sms" -> requestPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                "storage" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                    } else {
+                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
                 }
             }
         }
-        
+
         @JavascriptInterface
-        fun recordVideo() {
-            Log.d(TAG, "Record video button clicked from JavaScript")
-            runOnUiThread {
-                if (checkCameraPermission()) {
-                    recordVideo()
+        fun checkPermission(permission: String): Boolean {
+            val result = when (permission) {
+                "camera" -> ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                "microphone" -> ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                "location" -> ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                "sms" -> ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+                "storage" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+                    } else {
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                    }                }
+                else -> false
+            }
+            Log.d("WebAssemblyApp", "Permission $permission: $result")
+            return result
+        }
+
+        @JavascriptInterface
+        fun startRecording() {
+            Log.d("WebAssemblyApp", "Starting audio recording")            
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) 
+                == PackageManager.PERMISSION_GRANTED) {
+                executeAudioRecording()
+            } else {
+                Log.d("WebAssemblyApp", "Requesting microphone permission for recording")
+                pendingAction = "startRecording"
+                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+
+        fun executeAudioRecording() {
+            try {
+                outputFile = File(context.externalCacheDir, "recording_${System.currentTimeMillis()}.3gp")
+                mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
                 } else {
-                    requestCameraPermission()
+                    @Suppress("DEPRECATION")
+                    MediaRecorder()
+                }.apply {
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+                    setOutputFile(outputFile!!.absolutePath)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
+                    prepare()
+                    start()
                 }
+                this@MainActivity.isRecording = true
+                Log.d("WebAssemblyApp", "Recording started: ${outputFile!!.absolutePath}")
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Recording failed: ${e.message}")
             }
         }
-        
+
         @JavascriptInterface
-        fun pickImage() {
-            Log.d(TAG, "Pick image button clicked from JavaScript")
-            runOnUiThread {
-                pickImage()
-            }
-        }
-        
-        // ========== FILES ==========
-        @JavascriptInterface
-        fun pickFile() {
-            Log.d(TAG, "Pick file button clicked from JavaScript")
-            runOnUiThread {
-                pickFile()
-            }
-        }
-        
-        @JavascriptInterface
-        fun saveFile(fileName: String, content: String) {
-            Log.d(TAG, "Save file button clicked from JavaScript")
-            runOnUiThread {
-                saveFile(fileName, content)
-            }
-        }
-        
-        // ========== LOCATION ==========
-        @JavascriptInterface
-        fun getLocation() {
-            Log.d(TAG, "Get location button clicked from JavaScript")
-            runOnUiThread {
-                getCurrentLocation()
-            }
-        }
-        
-        @JavascriptInterface
-        fun startGPS() {
-            Log.d(TAG, "Start GPS button clicked from JavaScript")
-            runOnUiThread {
-                getCurrentLocation()
-            }
-        }
-        
-        // ========== DEVICE INFO ==========
-        @JavascriptInterface
-        fun getBatteryLevel(): Int {
-            Log.d(TAG, "Get battery level from JavaScript")
-            return getBatteryLevel()
-        }
-        
-        @JavascriptInterface
-        fun getNetworkInfo(): String {
-            Log.d(TAG, "Get network info from JavaScript")
-            return getNetworkInfo()
-        }
-        
-        @JavascriptInterface
-        fun getDeviceInfo(): String {
-            Log.d(TAG, "Get device info from JavaScript")
-            return getDeviceInfo()
-        }
-        
-        // ========== AUDIO ==========
-        @JavascriptInterface
-        fun recordAudio() {
-            Log.d(TAG, "Record audio button clicked from JavaScript")
-            runOnUiThread {
-                if (isRecording) {
-                    stopAudioRecording()
-                } else {
-                    startAudioRecording()
+        fun stopRecording(): String {
+            Log.d("WebAssemblyApp", "Stopping audio recording")
+            return try {
+                mediaRecorder?.apply {
+                    stop()
+                    release()
                 }
+                mediaRecorder = null
+                this@MainActivity.isRecording = false
+                val filePath = outputFile?.absolutePath ?: ""
+                Log.d("WebAssemblyApp", "Recording stopped: $filePath")
+                filePath
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Stop recording failed: ${e.message}")
+                ""
             }
         }
-        
-        @JavascriptInterface
-        fun playSound(soundType: String) {
-            Log.d(TAG, "Play sound button clicked from JavaScript: $soundType")
-            runOnUiThread {
-                playSound()
-            }
-        }
-        
-        // ========== VIBRATION AND NOTIFICATIONS ==========
+
         @JavascriptInterface
         fun vibrate(duration: Long) {
-            Log.d(TAG, "Vibrate button clicked from JavaScript: ${duration}ms")
-            runOnUiThread {
-                vibrateDevice(duration)
+            Log.d("WebAssemblyApp", "Vibrating for ${duration}ms")
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                vibratorManager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator            }
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(duration)
             }
         }
-        
+
         @JavascriptInterface
-        fun showNotification(title: String, message: String) {
-            Log.d(TAG, "Show notification from JavaScript: $title - $message")
-            runOnUiThread {
-                showNotification(title, message)
+        fun sendSMS(number: String, message: String): Boolean {
+            Log.d("WebAssemblyApp", "Sending SMS to $number: $message")
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) 
+                == PackageManager.PERMISSION_GRANTED) {
+                
+                return executeSendSMS(number, message)
+            } else {
+                Log.d("WebAssemblyApp", "Requesting SMS permission")
+                pendingAction = "sendSMS"
+                pendingSmsNumber = number
+                pendingSmsMessage = message
+                requestPermissionLauncher.launch(Manifest.permission.SEND_SMS)
+                return false
             }
         }
-        
+
+        fun executeSendSMS(number: String, message: String): Boolean {
+            return try {
+                val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(SmsManager::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    SmsManager.getDefault()                }
+                smsManager.sendTextMessage(number, null, message, null, null)
+                Log.d("WebAssemblyApp", "SMS sent successfully")
+                true
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "SMS failed: ${e.message}")
+                false
+            }
+        }
+
+        @JavascriptInterface
+        fun getLocation(): String {
+            Log.d("WebAssemblyApp", "Getting location")
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
+                == PackageManager.PERMISSION_GRANTED) {
+                
+                return executeGetLocation()
+            } else {
+                Log.d("WebAssemblyApp", "Requesting location permission")
+                pendingAction = "getLocation"
+                requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                return "{\"error\": \"Permission not granted\"}"
+            }
+        }
+
+        fun executeGetLocation(): String {
+            val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+              return if (location != null) {
+                val result = "{\"latitude\": ${location.latitude}, \"longitude\": ${location.longitude}}"
+                Log.d("WebAssemblyApp", "Location: $result")
+                result
+            } else {
+                Log.d("WebAssemblyApp", "Location not available")
+                "{\"error\": \"Location not available\"}"
+            }
+        }
+
+        @JavascriptInterface
+        fun takePhoto() {
+            Log.d("WebAssemblyApp", "Taking photo")
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
+                == PackageManager.PERMISSION_GRANTED) {
+                executeCamera()
+            } else {
+                Log.d("WebAssemblyApp", "Requesting camera permission for photo")
+                pendingAction = "takePhoto"
+                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+
+        @JavascriptInterface
+        fun recordVideo() {
+            Log.d("WebAssemblyApp", "Recording video")
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
+                == PackageManager.PERMISSION_GRANTED) {
+                executeVideoRecording()
+            } else {
+                Log.d("WebAssemblyApp", "Requesting camera permission for video")
+                pendingAction = "recordVideo"
+                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+
+        // Méthodes d'exécution séparées
+        fun executeCamera() {
+            try {
+                photoFile = createImageFile()
+                val photoURI = FileProvider.getUriForFile(
+                    this@MainActivity,
+                    "com.webassembly.unified.fileprovider",
+                    photoFile!!
+                )
+                
+                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                }
+                startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Camera failed: ${e.message}")
+            }
+        }
+
+        fun executeVideoRecording() {
+            try {
+                val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
+                startActivityForResult(intent, 3)
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Video recording failed: ${e.message}")
+            }
+        }
+
+        @JavascriptInterface
+        fun openCamera() {
+            Log.d("WebAssemblyApp", "Opening camera")
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
+                == PackageManager.PERMISSION_GRANTED) {
+                
+                try {
+                    photoFile = createImageFile()
+                    val photoURI = FileProvider.getUriForFile(
+                        this@MainActivity,
+                        "com.webassembly.unified.fileprovider",
+                        photoFile!!
+                    )
+                    
+                    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    }
+                    startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+                } catch (e: Exception) {
+                    Log.e("WebAssemblyApp", "Camera failed: ${e.message}")
+                }            } else {
+                Log.e("WebAssemblyApp", "No permission for camera")
+            }
+        }
+
+        @JavascriptInterface
+        fun openGallery() {
+            Log.d("WebAssemblyApp", "Opening gallery")
+            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                type = "image/*"
+                addCategory(Intent.CATEGORY_OPENABLE)
+            }
+            startActivityForResult(intent, PICK_IMAGE_REQUEST)
+        }
+
+        @JavascriptInterface
+        fun openFile() {
+            Log.d("WebAssemblyApp", "Opening file picker")
+            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                type = "*/*"
+                addCategory(Intent.CATEGORY_OPENABLE)
+            }
+            startActivityForResult(intent, 1001)
+        }
+
+        @JavascriptInterface
+        fun saveFile(filename: String, content: String): Boolean {
+            Log.d("WebAssemblyApp", "Saving file: $filename")
+            return try {
+                val file = File(context.externalCacheDir, filename)
+                FileOutputStream(file).use { 
+                    it.write(content.toByteArray()) 
+                }
+                Log.d("WebAssemblyApp", "File saved: ${file.absolutePath}")
+                true
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Save file failed: ${e.message}")
+                false
+            }
+        }
+
+        @JavascriptInterface
+        fun getDeviceInfo(): String {
+            val info = JSONObject().apply {
+                put("model", Build.MODEL)
+                put("manufacturer", Build.MANUFACTURER)
+                put("version", Build.VERSION.RELEASE)
+                put("sdk", Build.VERSION.SDK_INT)
+                put("brand", Build.BRAND)
+                put("device", Build.DEVICE)
+                put("product", Build.PRODUCT)
+            }
+            Log.d("WebAssemblyApp", "Device info: $info")
+            return info.toString()
+        }
+
         @JavascriptInterface
         fun showToast(message: String) {
-            Log.d(TAG, "Show toast from JavaScript: $message")
-            showToast(message)
-        }
-        
-        // ========== COMMUNICATION ==========
-        @JavascriptInterface
-        fun sendSMS(phoneNumber: String, message: String) {
-            Log.d(TAG, "Send SMS from JavaScript to: $phoneNumber")
+            Log.d("WebAssemblyApp", "Showing toast: $message")
             runOnUiThread {
-                sendSms(phoneNumber, message)
-            }
-        }
-        
-        @JavascriptInterface
-        fun makeCall(phoneNumber: String) {
-            Log.d(TAG, "Make call from JavaScript to: $phoneNumber")
-            runOnUiThread {
-                makePhoneCall(phoneNumber)
-            }
-        }
-        
-        @JavascriptInterface
-        fun sendEmail(recipient: String, subject: String, body: String) {
-            Log.d(TAG, "Send email from JavaScript to: $recipient")
-            runOnUiThread {
-                sendEmail(recipient, subject, body)
-            }
-        }
-        
-        // ========== SYSTEM ==========
-        @JavascriptInterface
-        fun shareContent(content: String, mimeType: String) {
-            Log.d(TAG, "Share content from JavaScript: $content")
-            runOnUiThread {
-                shareContent(content)
-            }
-        }
-        
-        @JavascriptInterface
-        fun openBrowser(url: String) {
-            Log.d(TAG, "Open browser from JavaScript: $url")
-            runOnUiThread {
-                openBrowser(url)
-            }
-        }
-        
-        @JavascriptInterface
-        fun closeApp() {
-            Log.d(TAG, "Close app from JavaScript")
-            runOnUiThread {
-                finish()
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
         }
     }
-    
-    override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+
+    private fun createImageFile(): File {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${timeStamp}_",
+            ".jpg",
+            storageDir
+        )
+    }
+
+    @Deprecated("This method has been deprecated in favor of using the Activity Result API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        Log.d("WebAssemblyApp", "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
+        
+        when (requestCode) {            PICK_IMAGE_REQUEST -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    data?.data?.let { uri ->
+                        Log.d("WebAssemblyApp", "Image selected: $uri")
+                        webView.evaluateJavascript("window.handleImageSelected('${uri}');", null)
+                    }
+                }
+            }
+            CAMERA_CAPTURE_REQUEST -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    photoFile?.let { file ->
+                        Log.d("WebAssemblyApp", "Photo captured: ${file.absolutePath}")
+                        webView.evaluateJavascript("window.handlePhotoCaptured('${file.absolutePath}');", null)
+                    }
+                }
+            }
+            3 -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    data?.data?.let { uri ->
+                        Log.d("WebAssemblyApp", "Video recorded: $uri")
+                        webView.evaluateJavascript("window.handleVideoRecorded('${uri}');", null)
+                    }
+                }
+            }
+            1001 -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    data?.data?.let { uri ->
+                        Log.d("WebAssemblyApp", "File selected: $uri")
+                        webView.evaluateJavascript("window.handleFileSelected('${uri}');", null)
+                    }
+                }
+            }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d("WebAssemblyApp", "MainActivity onDestroy")
+        mediaRecorder?.release()
+        camera?.release()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d("WebAssemblyApp", "MainActivity onPause")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("WebAssemblyApp", "MainActivity onResume")
     }
 }
