@@ -3,6 +3,7 @@ package com.webassembly.unified
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -28,6 +29,7 @@ import android.view.SurfaceView
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
+import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,22 +43,33 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.Date
 
 class MainActivity : AppCompatActivity() {
     
     private lateinit var webView: WebView
     private var mediaRecorder: MediaRecorder? = null
+    private var videoMediaRecorder: MediaRecorder? = null
     private var camera: Camera? = null
     private var previewLayout: FrameLayout? = null
+    private var hiddenSurfaceView: SurfaceView? = null
+    private var surfaceHolder: SurfaceHolder? = null
     private var isRecording = false
+    private var isVideoRecording = false
     private var outputFile: File? = null
+    private var videoOutputFile: File? = null
     private var photoFile: File? = null
     
     // Variables pour mémoriser les actions en attente de permission
     private var pendingAction: String? = null
     private var pendingSmsNumber: String? = null
     private var pendingSmsMessage: String? = null
-      // Request codes
+    
+    // Variables pour sauvegarder l'état
+    private var currentPhotoPath: String? = null
+    private var webViewUrl: String? = null
+    
+    // Request codes
     private val CAMERA_REQUEST_CODE = 100
     private val STORAGE_REQUEST_CODE = 101
     private val LOCATION_REQUEST_CODE = 102
@@ -86,13 +99,18 @@ class MainActivity : AppCompatActivity() {
                     findViewById<WebView>(R.id.webview).post {
                         (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeVideoRecording()
                             ?: WebAppInterface(this).executeVideoRecording()
-                    }
-                }
-                "startRecording" -> {
+                    }                }                "startRecording" -> {
                     pendingAction = null
                     findViewById<WebView>(R.id.webview).post {
                         (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeAudioRecording()
                             ?: WebAppInterface(this).executeAudioRecording()
+                    }
+                }
+                "recordVideoBackground" -> {
+                    pendingAction = null
+                    findViewById<WebView>(R.id.webview).post {
+                        (findViewById<WebView>(R.id.webview).getTag() as? WebAppInterface)?.executeVideoBackgroundRecording()
+                            ?: WebAppInterface(this).executeVideoBackgroundRecording()
                     }
                 }
                 "sendSMS" -> {
@@ -128,12 +146,32 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Log.d("WebAssemblyApp", "MainActivity onCreate started")
         
+        // Restaurer l'état sauvegardé
+        savedInstanceState?.let { bundle ->
+            currentPhotoPath = bundle.getString("currentPhotoPath")
+            webViewUrl = bundle.getString("webViewUrl")
+            pendingAction = bundle.getString("pendingAction")
+            pendingSmsNumber = bundle.getString("pendingSmsNumber")
+            pendingSmsMessage = bundle.getString("pendingSmsMessage")
+            
+            Log.d("WebAssemblyApp", "Restored state - currentPhotoPath: $currentPhotoPath")
+            
+            // Restaurer le fichier photo si il existe
+            currentPhotoPath?.let { path ->
+                photoFile = File(path)
+                if (!photoFile!!.exists()) {
+                    photoFile = null
+                    currentPhotoPath = null
+                }
+            }
+        }
+        
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
         setContentView(R.layout.activity_main)
-        
-        setupWebView()
+          setupWebView()
+        setupHiddenSurfaceView()
         setupBackPressedHandler()
         
         Log.d("WebAssemblyApp", "MainActivity onCreate completed")
@@ -202,6 +240,44 @@ class MainActivity : AppCompatActivity() {
         loadMainPage()
     }
 
+    private fun setupHiddenSurfaceView() {
+        Log.d("WebAssemblyApp", "Setting up hidden surface view for camera preview")
+          // Créer une SurfaceView cachée pour la prévisualisation de la caméra
+        hiddenSurfaceView = SurfaceView(this).apply {
+            layoutParams = RelativeLayout.LayoutParams(1, 1).apply {
+                addRule(RelativeLayout.ALIGN_PARENT_TOP)
+                addRule(RelativeLayout.ALIGN_PARENT_START)
+            }
+            alpha = 0.01f // Presque transparente
+        }
+        
+        // Obtenir le SurfaceHolder
+        surfaceHolder = hiddenSurfaceView!!.holder.apply {
+            addCallback(object : SurfaceHolder.Callback {
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    Log.d("WebAssemblyApp", "Hidden surface created")
+                }
+                
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                    Log.d("WebAssemblyApp", "Hidden surface changed: ${width}x${height}")
+                }
+                
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
+                    Log.d("WebAssemblyApp", "Hidden surface destroyed")
+                }
+            })
+        }
+        
+        // Ajouter la SurfaceView cachée au layout principal (RelativeLayout)
+        val rootLayout = webView.parent as? android.widget.RelativeLayout
+        if (rootLayout != null) {
+            rootLayout.addView(hiddenSurfaceView)
+            Log.d("WebAssemblyApp", "Hidden surface view added to main layout")
+        } else {
+            Log.w("WebAssemblyApp", "Could not find RelativeLayout parent for webview")
+        }
+    }
+
     private fun setupBackPressedHandler() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -240,9 +316,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun info(message: String) {
             Log.i("WebAssemblyApp", "JS Info: $message")
-        }
-
-        @JavascriptInterface
+        }        @JavascriptInterface
         fun requestPermission(permission: String) {
             Log.d("WebAssemblyApp", "Requesting permission: $permission")
             when (permission) {
@@ -254,12 +328,11 @@ class MainActivity : AppCompatActivity() {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
                     } else {
-                        requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                        requestPermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     }
                 }
             }
-        }
-
+        }        
         @JavascriptInterface
         fun checkPermission(permission: String): Boolean {
             val result = when (permission) {
@@ -270,31 +343,52 @@ class MainActivity : AppCompatActivity() {
                 "storage" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-                    } else {
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-                    }                }
+                    } else {                        ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+                    }
+                }
                 else -> false
             }
+            
             Log.d("WebAssemblyApp", "Permission $permission: $result")
             return result
         }
 
         @JavascriptInterface
         fun startRecording() {
-            Log.d("WebAssemblyApp", "Starting audio recording")            
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) 
-                == PackageManager.PERMISSION_GRANTED) {
-                executeAudioRecording()
+            Log.d("WebAssemblyApp", "Toggle audio recording - currently recording: ${this@MainActivity.isRecording}")
+            
+            if (this@MainActivity.isRecording) {
+                // Si on est en train d'enregistrer, arrêter l'enregistrement
+                stopRecordingInternal()
             } else {
-                Log.d("WebAssemblyApp", "Requesting microphone permission for recording")
-                pendingAction = "startRecording"
-                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-
-        fun executeAudioRecording() {
+                // Si on n'enregistre pas, démarrer l'enregistrement
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) 
+                    == PackageManager.PERMISSION_GRANTED) {
+                    executeAudioRecording()
+                } else {
+                    Log.d("WebAssemblyApp", "Requesting microphone permission for recording")
+                    pendingAction = "startRecording"
+                    requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }            }
+        }        fun executeAudioRecording() {
             try {
-                outputFile = File(context.externalCacheDir, "recording_${System.currentTimeMillis()}.3gp")
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val fileName = "REC_${timeStamp}.3gp"
+                
+                // Pour Android 10+ (API 29+), utiliser le répertoire privé de l'app d'abord
+                val audioDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Utiliser le répertoire privé de l'app pour l'enregistrement
+                    getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+                } else {
+                    // Pour les versions antérieures, utiliser le répertoire public
+                    val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                    val appDir = File(musicDir, "WebAssemblyApp")
+                    appDir.mkdirs()
+                    appDir
+                }
+                
+                outputFile = File(audioDir, fileName)
+                
                 mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     MediaRecorder(context)
                 } else {
@@ -310,14 +404,17 @@ class MainActivity : AppCompatActivity() {
                 }
                 this@MainActivity.isRecording = true
                 Log.d("WebAssemblyApp", "Recording started: ${outputFile!!.absolutePath}")
+                
+                runOnUiThread {
+                    Toast.makeText(context, "🎤 Enregistrement démarré", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
                 Log.e("WebAssemblyApp", "Recording failed: ${e.message}")
-            }
-        }
-
-        @JavascriptInterface
-        fun stopRecording(): String {
-            Log.d("WebAssemblyApp", "Stopping audio recording")
+                runOnUiThread {
+                    Toast.makeText(context, "Erreur d'enregistrement: ${e.message}", Toast.LENGTH_SHORT).show()
+                }            }
+        }        private fun stopRecordingInternal(): String {
+            Log.d("WebAssemblyApp", "Stopping audio recording internally")
             return try {
                 mediaRecorder?.apply {
                     stop()
@@ -327,11 +424,297 @@ class MainActivity : AppCompatActivity() {
                 this@MainActivity.isRecording = false
                 val filePath = outputFile?.absolutePath ?: ""
                 Log.d("WebAssemblyApp", "Recording stopped: $filePath")
+                
+                // Copier le fichier vers le répertoire public pour qu'il soit accessible dans l'app musique
+                if (filePath.isNotEmpty()) {
+                    val sourceFile = File(filePath)
+                    if (sourceFile.exists()) {
+                        try {
+                            val publicFilePath = copyAudioToPublicDirectory(sourceFile)
+                            if (publicFilePath != null) {
+                                Log.d("WebAssemblyApp", "Audio copied to public directory: $publicFilePath")
+                                runOnUiThread {
+                                    Toast.makeText(context, "🎵 Enregistrement sauvé dans Musique: ${sourceFile.name} (${formatFileSize(sourceFile.length())})", Toast.LENGTH_LONG).show()
+                                }
+                                return publicFilePath
+                            } else {
+                                // Si la copie échoue, garder le fichier dans le répertoire privé
+                                Log.w("WebAssemblyApp", "Failed to copy to public directory, keeping in private directory")
+                                runOnUiThread {
+                                    Toast.makeText(context, "🎵 Enregistrement sauvé: ${sourceFile.name} (${formatFileSize(sourceFile.length())})", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("WebAssemblyApp", "Error copying audio to public directory: ${e.message}")
+                            // Garder le fichier dans le répertoire privé en cas d'erreur
+                            runOnUiThread {
+                                Toast.makeText(context, "🎵 Enregistrement sauvé: ${sourceFile.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(context, "⏹️ Enregistrement arrêté", Toast.LENGTH_SHORT).show()
+                    }
+                }
                 filePath
             } catch (e: Exception) {
                 Log.e("WebAssemblyApp", "Stop recording failed: ${e.message}")
+                this@MainActivity.isRecording = false
+                runOnUiThread {
+                    Toast.makeText(context, "Erreur arrêt enregistrement: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+                ""            }
+        }
+
+        @JavascriptInterface
+        fun stopRecording(): String {
+            Log.d("WebAssemblyApp", "Stop recording called from JS")
+            return stopRecordingInternal()
+        }
+
+        @JavascriptInterface
+        fun recordAudio() {
+            Log.d("WebAssemblyApp", "Record audio called - toggle mode")
+            startRecording() // Utilise la même logique de toggle
+        }        @JavascriptInterface
+        fun isRecording(): Boolean {
+            Log.d("WebAssemblyApp", "Checking recording status: ${this@MainActivity.isRecording}")
+            return this@MainActivity.isRecording
+        }        @JavascriptInterface
+        fun recordVideoBackground() {
+            Log.d("WebAssemblyApp", "Toggle video recording - currently recording: ${this@MainActivity.isVideoRecording}")
+            
+            if (this@MainActivity.isVideoRecording) {
+                // Si on est en train d'enregistrer, arrêter l'enregistrement vidéo
+                stopVideoRecordingInternal()
+            } else {
+                // Si on n'enregistre pas, démarrer l'enregistrement vidéo
+                val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                val hasMicrophone = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                
+                if (hasCamera && hasMicrophone) {
+                    executeVideoBackgroundRecording()
+                } else {
+                    Log.d("WebAssemblyApp", "Missing permissions for video recording - Camera: $hasCamera, Microphone: $hasMicrophone")
+                    pendingAction = "recordVideoBackground"
+                    
+                    // Demander d'abord la permission caméra si elle manque
+                    if (!hasCamera) {
+                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    } else if (!hasMicrophone) {
+                        requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun isVideoRecording(): Boolean {
+            Log.d("WebAssemblyApp", "Checking video recording status: ${this@MainActivity.isVideoRecording}")
+            return this@MainActivity.isVideoRecording
+        }        fun executeVideoBackgroundRecording() {
+            try {
+                // Vérifier les permissions d'abord
+                val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                val hasMicrophone = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                
+                if (!hasCamera || !hasMicrophone) {
+                    Log.e("WebAssemblyApp", "Missing permissions - Camera: $hasCamera, Microphone: $hasMicrophone")
+                    runOnUiThread {
+                        Toast.makeText(context, "Permissions caméra et microphone requises", Toast.LENGTH_SHORT).show()
+                    }
+                    return
+                }
+                
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val fileName = "VID_${timeStamp}.mp4"
+                
+                // Pour Android 10+ (API 29+), utiliser le répertoire privé de l'app d'abord
+                val videoDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    // Utiliser le répertoire privé de l'app pour l'enregistrement
+                    getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+                } else {
+                    // Pour les versions antérieures, utiliser le répertoire public
+                    val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                    val appDir = File(moviesDir, "WebAssemblyApp")
+                    appDir.mkdirs()
+                    appDir
+                }
+                
+                videoOutputFile = File(videoDir, fileName)
+                  // Première étape: ouvrir la caméra et configurer la prévisualisation
+                try {
+                    camera = Camera.open()
+                    
+                    // Vérifier que la surface est disponible
+                    if (surfaceHolder == null) {
+                        Log.e("WebAssemblyApp", "Surface holder not available")
+                        throw Exception("Surface holder not available")
+                    }
+                    
+                    // Configurer les paramètres de la caméra
+                    val parameters = camera!!.parameters
+                    val supportedVideoSizes = parameters.supportedVideoSizes
+                    if (supportedVideoSizes != null && supportedVideoSizes.isNotEmpty()) {
+                        // Chercher une taille 720p ou similaire
+                        val preferredSize = supportedVideoSizes.find { it.width == 1280 && it.height == 720 }
+                            ?: supportedVideoSizes.find { it.width <= 1280 && it.height <= 720 }
+                            ?: supportedVideoSizes[0]
+                        
+                        parameters.setPreviewSize(preferredSize.width, preferredSize.height)
+                        Log.d("WebAssemblyApp", "Camera preview size set to: ${preferredSize.width}x${preferredSize.height}")
+                    }
+                    
+                    camera!!.parameters = parameters
+                    
+                    // Configurer la prévisualisation avec la surface cachée
+                    camera!!.setPreviewDisplay(surfaceHolder)
+                    camera!!.startPreview()
+                    Log.d("WebAssemblyApp", "Camera preview started")
+                    
+                    // Déverrouiller la caméra pour MediaRecorder
+                    camera!!.unlock()
+                } catch (e: Exception) {
+                    Log.e("WebAssemblyApp", "Failed to open camera and start preview: ${e.message}")
+                    camera?.release()
+                    camera = null
+                    runOnUiThread {
+                        Toast.makeText(context, "Impossible d'ouvrir la caméra: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                    return
+                }
+                
+                videoMediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaRecorder()
+                }.apply {
+                    // Configuration pour enregistrement vidéo en arrière-plan
+                    setCamera(camera) // Assigner la caméra au MediaRecorder
+                    setAudioSource(MediaRecorder.AudioSource.MIC)
+                    setVideoSource(MediaRecorder.VideoSource.CAMERA)
+                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                    setOutputFile(videoOutputFile!!.absolutePath)
+                    setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                    setVideoSize(1280, 720) // 720p
+                    setVideoFrameRate(30)
+                    setVideoEncodingBitRate(5000000)
+                    setAudioEncodingBitRate(128000)
+                    setAudioSamplingRate(44100)
+                    
+                    try {
+                        prepare()
+                        start()
+                    } catch (e: Exception) {
+                        Log.e("WebAssemblyApp", "MediaRecorder prepare/start failed: ${e.message}")
+                        // Nettoyer en cas d'erreur
+                        release()
+                        camera?.release()
+                        camera = null
+                        throw e
+                    }
+                }
+                this@MainActivity.isVideoRecording = true
+                Log.d("WebAssemblyApp", "Video recording started: ${videoOutputFile!!.absolutePath}")
+                
+                runOnUiThread {
+                    Toast.makeText(context, "🎥 Enregistrement vidéo démarré", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Video recording failed: ${e.message}")
+                // Nettoyer en cas d'erreur
+                videoMediaRecorder?.release()
+                videoMediaRecorder = null
+                camera?.release()
+                camera = null
+                this@MainActivity.isVideoRecording = false
+                
+                runOnUiThread {
+                    Toast.makeText(context, "Erreur enregistrement vidéo: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }        private fun stopVideoRecordingInternal(): String {
+            Log.d("WebAssemblyApp", "Stopping video recording internally")
+            return try {
+                videoMediaRecorder?.apply {
+                    stop()
+                    release()
+                }
+                videoMediaRecorder = null
+                  // Libérer la caméra
+                camera?.apply {
+                    try {
+                        stopPreview() // Arrêter la prévisualisation
+                        lock() // Verrouiller à nouveau la caméra
+                        release()
+                        Log.d("WebAssemblyApp", "Camera preview stopped and camera released")
+                    } catch (e: Exception) {
+                        Log.w("WebAssemblyApp", "Error stopping camera preview: ${e.message}")
+                        release() // S'assurer que la caméra est libérée même en cas d'erreur
+                    }
+                }
+                camera = null
+                
+                this@MainActivity.isVideoRecording = false
+                val filePath = videoOutputFile?.absolutePath ?: ""
+                Log.d("WebAssemblyApp", "Video recording stopped: $filePath")
+                
+                // Copier le fichier vers le répertoire public pour qu'il soit accessible dans l'app galerie
+                if (filePath.isNotEmpty()) {
+                    val sourceFile = File(filePath)
+                    if (sourceFile.exists()) {
+                        try {
+                            val publicFilePath = copyVideoToPublicDirectory(sourceFile)
+                            if (publicFilePath != null) {
+                                Log.d("WebAssemblyApp", "Video copied to public directory: $publicFilePath")
+                                runOnUiThread {
+                                    Toast.makeText(context, "🎬 Vidéo sauvée dans Galerie: ${sourceFile.name} (${formatFileSize(sourceFile.length())})", Toast.LENGTH_LONG).show()
+                                }
+                                return publicFilePath
+                            } else {
+                                // Si la copie échoue, garder le fichier dans le répertoire privé
+                                Log.w("WebAssemblyApp", "Failed to copy video to public directory, keeping in private directory")
+                                runOnUiThread {
+                                    Toast.makeText(context, "🎬 Vidéo sauvée: ${sourceFile.name} (${formatFileSize(sourceFile.length())})", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("WebAssemblyApp", "Error copying video to public directory: ${e.message}")
+                            // Garder le fichier dans le répertoire privé en cas d'erreur
+                            runOnUiThread {
+                                Toast.makeText(context, "🎬 Vidéo sauvée: ${sourceFile.name}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(context, "⏹️ Enregistrement vidéo arrêté", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                filePath
+            } catch (e: Exception) {
+                Log.e("WebAssemblyApp", "Stop video recording failed: ${e.message}")
+                // Nettoyer en cas d'erreur
+                videoMediaRecorder?.release()
+                videoMediaRecorder = null
+                camera?.release()
+                camera = null
+                this@MainActivity.isVideoRecording = false
+                
+                runOnUiThread {
+                    Toast.makeText(context, "Erreur arrêt enregistrement vidéo: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
                 ""
             }
+        }
+
+        @JavascriptInterface
+        fun stopVideoRecording(): String {
+            Log.d("WebAssemblyApp", "Stop video recording called from JS")
+            return stopVideoRecordingInternal()
         }
 
         @JavascriptInterface
@@ -383,7 +766,9 @@ class MainActivity : AppCompatActivity() {
                 Log.e("WebAssemblyApp", "SMS failed: ${e.message}")
                 false
             }
-        }        @JavascriptInterface
+        }        
+        
+        @JavascriptInterface
         fun getLocation(): String {
             Log.d("WebAssemblyApp", "Getting location")
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) 
@@ -453,24 +838,41 @@ class MainActivity : AppCompatActivity() {
                 pendingAction = "recordVideo"
                 requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             }
-        }
-
-        // Méthodes d'exécution séparées
+        }        // Méthodes d'exécution séparées
         fun executeCamera() {
             try {
                 photoFile = createImageFile()
+                currentPhotoPath = photoFile?.absolutePath // Sauvegarder le chemin
+                
                 val photoURI = FileProvider.getUriForFile(
                     this@MainActivity,
                     "com.webassembly.unified.fileprovider",
                     photoFile!!
                 )
                 
+                Log.d("WebAssemblyApp", "Photo will be saved to: $currentPhotoPath")
+                
                 val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                     putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                    // Ajouter des flags pour améliorer la compatibilité
+                    addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-                startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+                
+                // Vérifier qu'une app peut gérer cette intent
+                if (intent.resolveActivity(packageManager) != null) {
+                    startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+                } else {
+                    Log.e("WebAssemblyApp", "No camera app available")
+                    runOnUiThread {
+                        Toast.makeText(context, "Aucune application appareil photo disponible", Toast.LENGTH_SHORT).show()
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("WebAssemblyApp", "Camera failed: ${e.message}")
+                runOnUiThread {
+                    Toast.makeText(context, "Erreur appareil photo: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -481,9 +883,7 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("WebAssemblyApp", "Video recording failed: ${e.message}")
             }
-        }
-
-        @JavascriptInterface
+        }        @JavascriptInterface
         fun openCamera() {
             Log.d("WebAssemblyApp", "Opening camera")
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) 
@@ -491,20 +891,41 @@ class MainActivity : AppCompatActivity() {
                 
                 try {
                     photoFile = createImageFile()
+                    currentPhotoPath = photoFile?.absolutePath // Sauvegarder le chemin
+                    
                     val photoURI = FileProvider.getUriForFile(
                         this@MainActivity,
                         "com.webassembly.unified.fileprovider",
                         photoFile!!
                     )
                     
+                    Log.d("WebAssemblyApp", "Photo will be saved to: $currentPhotoPath")
+                    
                     val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                         putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+                    
+                    if (intent.resolveActivity(packageManager) != null) {
+                        startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
+                    } else {
+                        Log.e("WebAssemblyApp", "No camera app available")
+                        runOnUiThread {
+                            Toast.makeText(context, "Aucune application appareil photo disponible", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e("WebAssemblyApp", "Camera failed: ${e.message}")
-                }            } else {
+                    runOnUiThread {
+                        Toast.makeText(context, "Erreur appareil photo: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } else {
                 Log.e("WebAssemblyApp", "No permission for camera")
+                runOnUiThread {
+                    Toast.makeText(context, "Permission appareil photo requise", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -670,12 +1091,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
-        fun recordAudio() {
-            Log.d("WebAssemblyApp", "Record audio called")
-            startRecording()
-        }
-
-        @JavascriptInterface
         fun playSound(soundType: String) {
             Log.d("WebAssemblyApp", "Playing sound: $soundType")
             try {
@@ -774,60 +1189,631 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    @Deprecated("This method has been deprecated in favor of using the Activity Result API")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    @Deprecated("This method has been deprecated in favor of using the Activity Result API")    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         Log.d("WebAssemblyApp", "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
         
-        when (requestCode) {            PICK_IMAGE_REQUEST -> {
+        when (requestCode) {            
+            PICK_IMAGE_REQUEST -> {
                 if (resultCode == Activity.RESULT_OK) {
                     data?.data?.let { uri ->
                         Log.d("WebAssemblyApp", "Image selected: $uri")
-                        webView.evaluateJavascript("window.handleImageSelected('${uri}');", null)
+                        handleImageSelected(uri)
                     }
+                } else {
+                    Log.d("WebAssemblyApp", "Image selection cancelled or failed")
                 }
             }
             CAMERA_CAPTURE_REQUEST -> {
+                Log.d("WebAssemblyApp", "Camera capture result - resultCode: $resultCode, photoFile exists: ${photoFile?.exists()}")
+                
                 if (resultCode == Activity.RESULT_OK) {
-                    photoFile?.let { file ->
-                        Log.d("WebAssemblyApp", "Photo captured: ${file.absolutePath}")
-                        webView.evaluateJavascript("window.handlePhotoCaptured('${file.absolutePath}');", null)
+                    // Utiliser currentPhotoPath si photoFile est null (après restauration d'état)
+                    val filePath = photoFile?.absolutePath ?: currentPhotoPath
+                    
+                    if (filePath != null) {
+                        val file = File(filePath)
+                        if (file.exists()) {
+                            Log.d("WebAssemblyApp", "Photo captured successfully: $filePath")
+                            handlePhotoCaptured(filePath)
+                        } else {
+                            Log.e("WebAssemblyApp", "Photo file does not exist: $filePath")
+                            runOnUiThread {
+                                Toast.makeText(this, "Erreur: fichier photo introuvable", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        Log.e("WebAssemblyApp", "No photo file path available")
+                        runOnUiThread {
+                            Toast.makeText(this, "Erreur: chemin de fichier photo non disponible", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    Log.d("WebAssemblyApp", "Photo capture cancelled or failed")
+                    runOnUiThread {
+                        Toast.makeText(this, "Capture photo annulée", Toast.LENGTH_SHORT).show()
                     }
                 }
+                
+                // Nettoyer les variables
+                currentPhotoPath = null
             }
             3 -> {
                 if (resultCode == Activity.RESULT_OK) {
                     data?.data?.let { uri ->
                         Log.d("WebAssemblyApp", "Video recorded: $uri")
-                        webView.evaluateJavascript("window.handleVideoRecorded('${uri}');", null)
+                        handleVideoRecorded(uri)
                     }
+                } else {
+                    Log.d("WebAssemblyApp", "Video recording cancelled or failed")
                 }
             }
             1001 -> {
                 if (resultCode == Activity.RESULT_OK) {
                     data?.data?.let { uri ->
                         Log.d("WebAssemblyApp", "File selected: $uri")
-                        webView.evaluateJavascript("window.handleFileSelected('${uri}');", null)
+                        handleFileSelected(uri)
+                    }
+                } else {
+                    Log.d("WebAssemblyApp", "File selection cancelled or failed")
+                }
+            }
+        }
+    }// Méthodes de traitement des résultats d'activité en Kotlin pur
+    private fun handleImageSelected(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing selected image: $uri")
+        try {
+            // Traitement de l'image sélectionnée
+            val imageInfo = JSONObject().apply {
+                put("type", "image")
+                put("uri", uri.toString())
+                put("timestamp", System.currentTimeMillis())
+            }
+            
+            Log.d("WebAssemblyApp", "Image info: $imageInfo")
+            
+            // Afficher un toast avec les informations
+            runOnUiThread {
+                Toast.makeText(this, "Image sélectionnée: ${uri.lastPathSegment}", Toast.LENGTH_SHORT).show()
+            }
+            
+            // Traitement Kotlin uniquement - pas de JavaScript
+            processImageFile(uri)
+            
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing selected image: ${e.message}")
+        }
+    }
+    
+    private fun handlePhotoCaptured(filePath: String) {
+        Log.d("WebAssemblyApp", "Processing captured photo: $filePath")
+        try {
+            val file = File(filePath)
+            if (file.exists()) {
+                val photoInfo = JSONObject().apply {
+                    put("type", "photo")
+                    put("path", filePath)
+                    put("size", file.length())
+                    put("timestamp", System.currentTimeMillis())
+                }
+                
+                Log.d("WebAssemblyApp", "Photo info: $photoInfo")
+                
+                // Afficher un toast avec les informations
+                runOnUiThread {
+                    Toast.makeText(this, "Photo capturée: ${file.name} (${file.length()} bytes)", Toast.LENGTH_LONG).show()
+                }
+                
+                // Traitement Kotlin uniquement - pas de JavaScript
+                processPhotoFile(file)
+                
+            } else {
+                Log.w("WebAssemblyApp", "Captured photo file does not exist: $filePath")
+                runOnUiThread {
+                    Toast.makeText(this, "Erreur: fichier photo introuvable", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing captured photo: ${e.message}")
+        }
+    }
+    
+    private fun handleVideoRecorded(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing recorded video: $uri")
+        try {
+            val videoInfo = JSONObject().apply {
+                put("type", "video")
+                put("uri", uri.toString())
+                put("timestamp", System.currentTimeMillis())
+            }
+            
+            Log.d("WebAssemblyApp", "Video info: $videoInfo")
+            
+            // Afficher un toast avec les informations
+            runOnUiThread {
+                Toast.makeText(this, "Vidéo enregistrée: ${uri.lastPathSegment}", Toast.LENGTH_LONG).show()
+            }
+            
+            // Traitement Kotlin uniquement - pas de JavaScript
+            processVideoFile(uri)
+            
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing recorded video: ${e.message}")
+        }
+    }
+    
+    private fun handleFileSelected(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing selected file: $uri")
+        try {
+            val fileInfo = JSONObject().apply {
+                put("type", "file")
+                put("uri", uri.toString())
+                put("timestamp", System.currentTimeMillis())
+            }
+            
+            Log.d("WebAssemblyApp", "File info: $fileInfo")
+            
+            // Afficher un toast avec les informations
+            runOnUiThread {
+                Toast.makeText(this, "Fichier sélectionné: ${uri.lastPathSegment}", Toast.LENGTH_SHORT).show()
+            }
+            
+            // Traitement Kotlin uniquement - pas de JavaScript
+            processSelectedFile(uri)
+              } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing selected file: ${e.message}")
+        }
+    }
+
+    // Méthodes de traitement spécifiques en Kotlin pur
+    private fun processImageFile(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing image file in Kotlin: $uri")
+        try {
+            // Copier l'image dans la galerie du téléphone
+            val inputStream = contentResolver.openInputStream(uri)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "IMG_${timeStamp}.jpg"
+            
+            // Utiliser le dossier Pictures public pour que l'image apparaisse dans la galerie
+            val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+            val appDir = File(picturesDir, "WebAssemblyApp")
+            appDir.mkdirs()
+            
+            val outputFile = File(appDir, fileName)
+            
+            inputStream?.use { input ->
+                FileOutputStream(outputFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            Log.d("WebAssemblyApp", "Image saved to gallery: ${outputFile.absolutePath}")
+            
+            // Notifier le système que le fichier a été ajouté pour qu'il apparaisse dans la galerie
+            val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+            intent.data = Uri.fromFile(outputFile)
+            sendBroadcast(intent)
+            
+            runOnUiThread {
+                Toast.makeText(this, "🖼️ Image sauvée dans la galerie: ${outputFile.name}", Toast.LENGTH_LONG).show()
+            }
+            
+            // Optionnel: Redimensionner l'image si trop grande
+            resizeImageIfNeeded(outputFile)
+              } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing image: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "Erreur de traitement image: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun processPhotoFile(file: File) {
+        Log.d("WebAssemblyApp", "Processing photo file in Kotlin: ${file.absolutePath}")
+        try {
+            if (file.exists()) {
+                // Sauvegarder dans la galerie du téléphone
+                val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+                val fileName = "PHOTO_${timeStamp}.jpg"
+                
+                // Utiliser le dossier Pictures public pour que l'image apparaisse dans la galerie
+                val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                val appDir = File(picturesDir, "WebAssemblyApp")
+                appDir.mkdirs()
+                
+                val permanentFile = File(appDir, fileName)
+                
+                file.copyTo(permanentFile, overwrite = true)
+                
+                Log.d("WebAssemblyApp", "Photo copied to gallery: ${permanentFile.absolutePath}")
+                
+                // Notifier le système que le fichier a été ajouté pour qu'il apparaisse dans la galerie
+                val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                intent.data = Uri.fromFile(permanentFile)
+                sendBroadcast(intent)
+                
+                runOnUiThread {
+                    Toast.makeText(this, "📷 Photo sauvée dans la galerie: ${permanentFile.name}", Toast.LENGTH_LONG).show()
+                }
+                
+                // Optionnel: Redimensionner la photo si nécessaire
+                resizeImageIfNeeded(permanentFile)
+                
+                // Supprimer le fichier temporaire si ce n'est pas le fichier permanent
+                if (file.absolutePath != permanentFile.absolutePath) {
+                    file.delete()
+                    Log.d("WebAssemblyApp", "Temporary file deleted: ${file.absolutePath}")
+                }
+                
+            } else {
+                Log.w("WebAssemblyApp", "Photo file does not exist: ${file.absolutePath}")
+            }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing photo: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "Erreur de traitement photo: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun processVideoFile(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing video file in Kotlin: $uri")
+        try {
+            // Copier la vidéo dans le répertoire de l'app
+            val inputStream = contentResolver.openInputStream(uri)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = "VID_${timeStamp}.mp4"
+            val outputFile = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), fileName)
+            
+            // Créer le répertoire s'il n'existe pas
+            outputFile.parentFile?.mkdirs()
+            
+            inputStream?.use { input ->
+                FileOutputStream(outputFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            Log.d("WebAssemblyApp", "Video saved to: ${outputFile.absolutePath}")
+            
+            runOnUiThread {
+                Toast.makeText(this, "Vidéo sauvegardée: ${outputFile.name} (${formatFileSize(outputFile.length())})", Toast.LENGTH_LONG).show()
+            }
+            
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing video: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "Erreur de traitement vidéo: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun processSelectedFile(uri: Uri) {
+        Log.d("WebAssemblyApp", "Processing selected file in Kotlin: $uri")
+        try {
+            // Obtenir le nom du fichier
+            val fileName = getFileNameFromUri(uri)
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val safeFileName = "${timeStamp}_${fileName}"
+            
+            // Copier le fichier dans le répertoire de l'app
+            val inputStream = contentResolver.openInputStream(uri)
+            val outputFile = File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), safeFileName)
+            
+            // Créer le répertoire s'il n'existe pas
+            outputFile.parentFile?.mkdirs()
+            
+            inputStream?.use { input ->
+                FileOutputStream(outputFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            Log.d("WebAssemblyApp", "File saved to: ${outputFile.absolutePath}")
+            
+            runOnUiThread {
+                Toast.makeText(this, "Fichier sauvegardé: ${outputFile.name} (${formatFileSize(outputFile.length())})", Toast.LENGTH_LONG).show()
+            }
+            
+            // Analyser le type de fichier et effectuer un traitement spécifique
+            analyzeAndProcessFile(outputFile)
+            
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error processing file: ${e.message}")
+            runOnUiThread {
+                Toast.makeText(this, "Erreur de traitement fichier: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    // Méthodes utilitaires
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+            else -> "${bytes / (1024 * 1024 * 1024)} GB"
+        }
+    }
+    
+    private fun resizeImageIfNeeded(imageFile: File) {
+        try {
+            // Vérifier la taille du fichier (si > 2MB, redimensionner)
+            if (imageFile.length() > 2 * 1024 * 1024) {
+                Log.d("WebAssemblyApp", "Image is large (${formatFileSize(imageFile.length())}), considering resize")
+                // Ici vous pourriez implémenter une logique de redimensionnement
+                // avec BitmapFactory et Bitmap.createScaledBitmap()
+            }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error checking image size: ${e.message}")
+        }
+    }
+    
+    private fun getFileNameFromUri(uri: Uri): String {
+        var fileName = "unknown_file"
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex) ?: "unknown_file"
                     }
                 }
             }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error getting file name: ${e.message}")
+            fileName = "file_${System.currentTimeMillis()}"
+        }
+        return fileName
+    }
+    
+    private fun analyzeAndProcessFile(file: File) {
+        try {
+            val extension = file.extension.lowercase()
+            Log.d("WebAssemblyApp", "Analyzing file type: $extension")
+            
+            when (extension) {
+                "txt", "log" -> {
+                    Log.d("WebAssemblyApp", "Text file detected, reading content preview")
+                    // Lire les premières lignes du fichier texte
+                    val preview = file.readLines().take(3).joinToString("\n")
+                    Log.d("WebAssemblyApp", "File preview: $preview")
+                }
+                "json" -> {
+                    Log.d("WebAssemblyApp", "JSON file detected, validating structure")
+                    // Valider la structure JSON
+                    try {
+                        val content = file.readText()
+                        JSONObject(content)
+                        Log.d("WebAssemblyApp", "Valid JSON file")
+                    } catch (e: Exception) {
+                        Log.w("WebAssemblyApp", "Invalid JSON file: ${e.message}")
+                    }
+                }
+                "pdf" -> {
+                    Log.d("WebAssemblyApp", "PDF file detected")
+                    // Ici vous pourriez ajouter un traitement PDF spécifique
+                }
+                "zip", "rar", "7z" -> {
+                    Log.d("WebAssemblyApp", "Archive file detected")
+                    // Ici vous pourriez ajouter un traitement d'archive
+                }
+                else -> {
+                    Log.d("WebAssemblyApp", "Unknown file type: $extension")
+                }            }        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error analyzing file: ${e.message}")
+        }
+    }
+
+    private fun copyAudioToPublicDirectory(sourceFile: File): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ : Utiliser MediaStore API
+                val resolver = contentResolver
+                val audioCollection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                
+                val audioDetails = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, sourceFile.name)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/3gpp")
+                    put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/WebAssemblyApp/")
+                    put(MediaStore.Audio.Media.IS_PENDING, 1)
+                }
+                
+                val audioUri = resolver.insert(audioCollection, audioDetails)
+                
+                if (audioUri != null) {
+                    resolver.openOutputStream(audioUri)?.use { outputStream ->
+                        sourceFile.inputStream().use { inputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                    
+                    // Marquer comme non-pending
+                    audioDetails.clear()
+                    audioDetails.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                    resolver.update(audioUri, audioDetails, null, null)
+                    
+                    Log.d("WebAssemblyApp", "Audio saved via MediaStore: $audioUri")
+                    audioUri.toString()
+                } else {
+                    Log.e("WebAssemblyApp", "Failed to create MediaStore entry")
+                    null
+                }
+            } else {
+                // Android 9 et antérieur : Copie directe vers le répertoire public
+                val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                val appDir = File(musicDir, "WebAssemblyApp")
+                appDir.mkdirs()
+                
+                val publicFile = File(appDir, sourceFile.name)
+                sourceFile.copyTo(publicFile, overwrite = true)
+                
+                // Notifier le système que le fichier a été ajouté
+                val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                intent.data = Uri.fromFile(publicFile)
+                sendBroadcast(intent)
+                
+                Log.d("WebAssemblyApp", "Audio copied to public directory: ${publicFile.absolutePath}")
+                publicFile.absolutePath
+            }        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error copying audio to public directory: ${e.message}")
+            null
+        }
+    }
+
+    private fun copyVideoToPublicDirectory(sourceFile: File): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ : Utiliser MediaStore API
+                val resolver = contentResolver
+                val videoCollection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                
+                val videoDetails = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, sourceFile.name)
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                    put(MediaStore.Video.Media.RELATIVE_PATH, "Movies/WebAssemblyApp/")
+                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                }
+                
+                val videoUri = resolver.insert(videoCollection, videoDetails)
+                
+                if (videoUri != null) {
+                    resolver.openOutputStream(videoUri)?.use { outputStream ->
+                        sourceFile.inputStream().use { inputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                    
+                    // Marquer comme non-pending
+                    videoDetails.clear()
+                    videoDetails.put(MediaStore.Video.Media.IS_PENDING, 0)
+                    resolver.update(videoUri, videoDetails, null, null)
+                    
+                    Log.d("WebAssemblyApp", "Video saved via MediaStore: $videoUri")
+                    videoUri.toString()
+                } else {
+                    Log.e("WebAssemblyApp", "Failed to create MediaStore entry for video")
+                    null
+                }
+            } else {
+                // Android 9 et antérieur : Copie directe vers le répertoire public
+                val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
+                val appDir = File(moviesDir, "WebAssemblyApp")
+                appDir.mkdirs()
+                
+                val publicFile = File(appDir, sourceFile.name)
+                sourceFile.copyTo(publicFile, overwrite = true)
+                
+                // Notifier le système que le fichier a été ajouté
+                val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
+                intent.data = Uri.fromFile(publicFile)
+                sendBroadcast(intent)
+                
+                Log.d("WebAssemblyApp", "Video copied to public directory: ${publicFile.absolutePath}")
+                publicFile.absolutePath
+            }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error copying video to public directory: ${e.message}")
+            null
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        Log.d("WebAssemblyApp", "MainActivity onDestroy")
-        mediaRecorder?.release()
-        camera?.release()
+        Log.d("WebAssemblyApp", "MainActivity onDestroy")          // Libérer les ressources
+        try {
+            mediaRecorder?.release()
+            videoMediaRecorder?.release()
+            camera?.apply {
+                try {
+                    stopPreview()
+                    lock()
+                    release()
+                } catch (e: Exception) {
+                    Log.w("WebAssemblyApp", "Error stopping camera in onDestroy: ${e.message}")
+                    release()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("WebAssemblyApp", "Error releasing resources: ${e.message}")
+        }
+        
+        mediaRecorder = null
+        videoMediaRecorder = null
+        camera = null
     }
 
     override fun onPause() {
         super.onPause()
         Log.d("WebAssemblyApp", "MainActivity onPause")
+        
+        // Sauvegarder l'URL actuelle du WebView
+        if (::webView.isInitialized) {
+            webViewUrl = webView.url
+        }
     }
 
     override fun onResume() {
         super.onResume()
         Log.d("WebAssemblyApp", "MainActivity onResume")
+        
+        // Reprendre le WebView si nécessaire
+        if (::webView.isInitialized) {
+            webView.onResume()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        Log.w("WebAssemblyApp", "Low memory warning")
+        
+        // Libérer les ressources non essentielles
+        if (::webView.isInitialized) {
+            webView.freeMemory()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        
+        // Sauvegarder l'état important
+        currentPhotoPath?.let { path ->
+            outState.putString("currentPhotoPath", path)
+        }
+        
+        if (::webView.isInitialized) {
+            webViewUrl = webView.url
+            webViewUrl?.let { url ->
+                outState.putString("webViewUrl", url)
+            }
+        }
+        
+        pendingAction?.let { action ->
+            outState.putString("pendingAction", action)
+        }
+        
+        pendingSmsNumber?.let { number ->
+            outState.putString("pendingSmsNumber", number)
+        }
+        
+        pendingSmsMessage?.let { message ->
+            outState.putString("pendingSmsMessage", message)
+        }
+        
+        Log.d("WebAssemblyApp", "State saved - currentPhotoPath: $currentPhotoPath")
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        
+        // Restaurer l'URL du WebView si elle a été sauvegardée
+        webViewUrl?.let { url ->
+            if (::webView.isInitialized && url != webView.url) {
+                Log.d("WebAssemblyApp", "Restoring WebView URL: $url")
+                webView.loadUrl(url)
+            }
+        }
+        
+        Log.d("WebAssemblyApp", "Instance state restored")
     }
 }

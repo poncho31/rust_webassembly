@@ -11,14 +11,29 @@ if [ "$1" = "docker" ]; then
     docker-compose down
     docker-compose up -d
 
-    # Ouvrir le navigateur (Linux)
+    # Ouvrir le navigateur (Linux/Mac)
     if command -v xdg-open > /dev/null; then
         xdg-open "$ALLOWED_ORIGIN_DOCKER" &
     elif command -v gnome-open > /dev/null; then
         gnome-open "$ALLOWED_ORIGIN_DOCKER" &
+    elif command -v open > /dev/null; then
+        open "$ALLOWED_ORIGIN_DOCKER" &
     fi
 
     docker logs -f "$APP_NAME_DOCKER"
+
+# Nouvelle section pour Android (équivalent à _run.bat)
+elif [ "$1" = "android" ]; then
+    echo "[INFO] Lancement du build Android..."
+    
+    # Appeler le script build_android.sh
+    if [ -f "./build_android.sh" ]; then
+        chmod +x ./build_android.sh
+        ./build_android.sh "$2"
+    else
+        echo "[ERROR] build_android.sh non trouvé !"
+        exit 1
+    fi
 
 else
 
@@ -54,6 +69,8 @@ else
         xdg-open "$ALLOWED_ORIGIN"
     elif command -v gnome-open > /dev/null; then
         gnome-open "$ALLOWED_ORIGIN"
+    elif command -v open > /dev/null; then
+        open "$ALLOWED_ORIGIN"
     fi) &
 
     # Démarrer le serveur

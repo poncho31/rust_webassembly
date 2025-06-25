@@ -36,6 +36,15 @@ function initAndroid() {
             }
         });
 
+        document.getElementById('android_record_video_background').addEventListener('click', function() {
+            console.log('🎥 Bouton vidéo en arrière plan cliqué');
+            if (window.Android.recordVideoBackground) {
+                window.Android.recordVideoBackground();
+            } else {
+                console.log('❌ Méthode recordVideoBackground non disponible');
+            }
+        });
+
         document.getElementById('android_pick_image').addEventListener('click', function() {
             console.log('🖼️ Bouton galerie cliqué');
             if (window.Android.pickImage) {
