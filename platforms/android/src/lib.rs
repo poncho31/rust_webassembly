@@ -6,7 +6,7 @@ use log::{info, error};
 use std::sync::Once;
 
 static INIT: Once = Once::new();
-
+// PAS ENCORE UTILISE, il faudra utiliser ceci quand je voudrais implémenter une partie serveur directement dans android
 /// Initialize logging for Android
 fn init_logging() {
     INIT.call_once(|| {
