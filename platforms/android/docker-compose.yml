@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  webassembly-android:
+    build:
+      context: ../..
+      dockerfile: platforms/android/Dockerfile.android
+    container_name: webassembly-android
+    volumes:
+      - ../..:/workspace
+    environment:
+      - ADB_MODE=${ADB_MODE:-usb}
+      - ADB_TCP_HOST=${ADB_TCP_HOST:-}
+      - ADB_TCP_PORT=${ADB_TCP_PORT:-5037}
+    
+    # Configuration conditionnelle selon l'OS
+    # Pour Windows : mode TCP uniquement
+    # Pour Linux/Mac : USB direct ou TCP
+    
+    # Configuration USB (Linux/Mac)
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    privileged: true
+    
+    # Configuration TCP (Windows + Linux/Mac en fallback)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "5037:5037"  # Port ADB pour debug si nécessaire
+    
+    # Configuration réseau pour accès à l'hôte
+    network_mode: bridge
+    
+    stdin_open: true
+    tty: true
+    
+    # Commande de démarrage avec détection automatique
+    command: >
+      bash -c "
+        echo '=== DÉTECTION DE L'ENVIRONNEMENT ===' &&
+        if [ -e /dev/bus/usb ] && [ -w /dev/bus/usb ] 2>/dev/null; then
+          echo 'Environment: Linux/Mac avec accès USB direct détecté' &&
+          export ADB_MODE=usb
+        else
+          echo 'Environment: Windows ou accès USB non disponible' &&
+          echo 'Utilisation du mode TCP via host.docker.internal' &&
+          export ADB_MODE=tcp &&
+          export ADB_TCP_HOST=host.docker.internal
+        fi &&
+        echo 'Mode ADB: '$$ADB_MODE &&
+        exec /entrypoint.sh
+      "

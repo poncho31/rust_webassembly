@@ -1,0 +1,58 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ANDROID_HOME=/opt/android-sdk
+ENV ANDROID_NDK_ROOT=/opt/android-sdk/ndk/25.2.9519653
+ENV NDK_HOME=/opt/android-sdk/ndk/25.2.9519653
+ENV JAVA_HOME=/opt/jdk-17
+ENV CARGO_HOME=/opt/cargo
+ENV RUSTUP_HOME=/opt/rustup
+ENV PATH=$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$CARGO_HOME/bin:$PATH
+
+# Ajout d'une variable d'environnement pour le mode ADB (usb ou tcp)
+ENV ADB_MODE=usb
+
+# Installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    curl wget unzip git build-essential pkg-config libssl-dev adb udev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation Java JDK 17
+RUN cd /opt && \
+    wget -q https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz && \
+    tar -xzf openjdk-17.0.2_linux-x64_bin.tar.gz && \
+    mv jdk-17.0.2 jdk-17 && \
+    rm openjdk-17.0.2_linux-x64_bin.tar.gz
+
+# Installation Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+RUN . $CARGO_HOME/env && cargo install cargo-ndk
+
+# Installation Android SDK
+RUN mkdir -p $ANDROID_HOME/cmdline-tools && cd $ANDROID_HOME/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
+    unzip commandlinetools-linux-9477386_latest.zip && \
+    rm commandlinetools-linux-9477386_latest.zip && \
+    mv cmdline-tools latest && \
+    yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses && \
+    $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;25.2.9519653"
+
+# Ajout targets Android pour Rust
+RUN . $CARGO_HOME/env && \
+    rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+
+# Configuration ADB
+RUN echo 'SUBSYSTEM=="usb", ATTR{idVendor}=="*", MODE="0666", GROUP="plugdev"' > /etc/udev/rules.d/51-android.rules
+
+WORKDIR /workspace/platforms/android
+
+# Script d'entrée avec détection automatique de l'hôte et gestion d'erreurs
+COPY platforms/android/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    sed -i 's/\r$//' /entrypoint.sh
+
+# Variables d'environnement pour la configuration ADB
+ENV ADB_TCP_HOST=""
+ENV ADB_TCP_PORT=5037
+
+ENTRYPOINT ["/entrypoint.sh"]

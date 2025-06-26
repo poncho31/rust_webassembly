@@ -3,7 +3,7 @@ name = "client"
 version = "0.1.0"
 edition = "2021"
 description = "WebAssembly client for the unified front/backend project"
-repository = "https://github.com/yourusername/webassembly_unified_frontbackend"
+repository = "https://github.com/poncho31/webassembly_unified_frontbackend"
 license = "MIT"
 
 [lib]

@@ -19,10 +19,17 @@ if /i "%1"=="docker" (
     docker logs -f %APP_NAME_DOCKER%
 
 ) else if /i "%1"=="android" (
-    echo [INFO] Construction de l'APK Android...
-    cd platforms\android
-    call build_android.bat
-    cd ..\..
+    if /i "%2"=="docker" (
+        echo [INFO] Lancement de la construction Android avec Docker...
+        cd platforms\android
+        call build_android_docker.bat
+        cd ..\..
+    ) else (
+        echo [INFO] Construction de l'APK Android...
+        cd platforms\android
+        call build_android.bat
+        cd ..\..
+    )
 
 ) else (
     REM Vérifie la présence de cargo et installe Rust si manquant
