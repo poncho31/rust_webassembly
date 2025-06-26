@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("WebAssemblyApp", "MainActivity onCreate started")
+        Log.d("rust_webassembly_android", "MainActivity onCreate started")
         
         // Initialiser les gestionnaires
         initializeManagers()
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         setupHiddenSurfaceView()
         setupBackPressedHandler()
         
-        Log.d("WebAssemblyApp", "MainActivity onCreate completed")
+        Log.d("rust_webassembly_android", "MainActivity onCreate completed")
     }
     
     private fun initializeManagers() {
@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
     private fun handlePermissionResult(pendingAction: String?, isGranted: Boolean) {
         if (isGranted) {
             Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show()
-            Log.d("WebAssemblyApp", "Permission granted - executing pending action: $pendingAction")
+            Log.d("rust_webassembly_android", "Permission granted - executing pending action: $pendingAction")
             
             // Exécuter l'action en attente
             when (pendingAction) {
@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
-            Log.d("WebAssemblyApp", "Permission denied")
+            Log.d("rust_webassembly_android", "Permission denied")
             permissionManager.clearPendingActions()
         }
     }
@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity() {
             permissionManager.pendingSmsNumber = bundle.getString("pendingSmsNumber")
             permissionManager.pendingSmsMessage = bundle.getString("pendingSmsMessage")
             
-            Log.d("WebAssemblyApp", "Restored state - currentPhotoPath: $currentPhotoPath")
+            Log.d("rust_webassembly_android", "Restored state - currentPhotoPath: $currentPhotoPath")
             
             // Restaurer l'état du gestionnaire de caméra
             cameraHandler.restoreState(currentPhotoPath)
@@ -160,11 +160,11 @@ class MainActivity : AppCompatActivity() {
         outState.putString("pendingSmsNumber", permissionManager.pendingSmsNumber)
         outState.putString("pendingSmsMessage", permissionManager.pendingSmsMessage)
         
-        Log.d("WebAssemblyApp", "State saved")
+        Log.d("rust_webassembly_android", "State saved")
     }
 
     private fun setupWebView() {
-        Log.d("WebAssemblyApp", "Setting up WebView")
+        Log.d("rust_webassembly_android", "Setting up WebView")
         webView = findViewById(R.id.webview)
         
         // Enable JavaScript and other settings
@@ -194,37 +194,37 @@ class MainActivity : AppCompatActivity() {
         // Set WebView client
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                Log.d("WebAssemblyApp", "Loading URL: ${request?.url}")
+                Log.d("rust_webassembly_android", "Loading URL: ${request?.url}")
                 return false
             }
             
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                Log.d("WebAssemblyApp", "Page finished loading: $url")
+                Log.d("rust_webassembly_android", "Page finished loading: $url")
             }
             
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
-                Log.e("WebAssemblyApp", "WebView error: ${error?.description}")
+                Log.e("rust_webassembly_android", "WebView error: ${error?.description}")
             }
         }
 
         // Set WebChromeClient for console logs and other features
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
-                Log.d("WebAssemblyApp", "Console: ${consoleMessage?.message()} at ${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}")
+                Log.d("rust_webassembly_android", "Console: ${consoleMessage?.message()} at ${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}")
                 return true
             }
             
             override fun onPermissionRequest(request: PermissionRequest?) {
-                Log.d("WebAssemblyApp", "Permission request: ${request?.resources?.joinToString()}")
+                Log.d("rust_webassembly_android", "Permission request: ${request?.resources?.joinToString()}")
                 request?.grant(request.resources)
             }
         }
     }
 
     private fun setupHiddenSurfaceView() {
-        Log.d("WebAssemblyApp", "Setting up hidden surface view for camera preview")
+        Log.d("rust_webassembly_android", "Setting up hidden surface view for camera preview")
         
         // Créer une SurfaceView cachée pour la prévisualisation de la caméra
         hiddenSurfaceView = SurfaceView(this).apply {
@@ -239,15 +239,15 @@ class MainActivity : AppCompatActivity() {
         surfaceHolder = hiddenSurfaceView!!.holder.apply {
             addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
-                    Log.d("WebAssemblyApp", "Hidden surface created")
+                    Log.d("rust_webassembly_android", "Hidden surface created")
                 }
                 
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                    Log.d("WebAssemblyApp", "Hidden surface changed: ${width}x${height}")
+                    Log.d("rust_webassembly_android", "Hidden surface changed: ${width}x${height}")
                 }
                 
                 override fun surfaceDestroyed(holder: SurfaceHolder) {
-                    Log.d("WebAssemblyApp", "Hidden surface destroyed")
+                    Log.d("rust_webassembly_android", "Hidden surface destroyed")
                 }
             })
         }
@@ -256,9 +256,9 @@ class MainActivity : AppCompatActivity() {
         val rootLayout = webView.parent as? android.widget.RelativeLayout
         if (rootLayout != null) {
             rootLayout.addView(hiddenSurfaceView)
-            Log.d("WebAssemblyApp", "Hidden surface view added to main layout")
+            Log.d("rust_webassembly_android", "Hidden surface view added to main layout")
         } else {
-            Log.w("WebAssemblyApp", "Could not find RelativeLayout parent for webview")
+            Log.w("rust_webassembly_android", "Could not find RelativeLayout parent for webview")
         }
         
         // Maintenant initialiser l'interface WebApp avec la surface
@@ -292,7 +292,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadMainPage() {
         val assetPath = "file:///android_asset/static/index.html"
-        Log.d("WebAssemblyApp", "Loading main page: $assetPath")
+        Log.d("rust_webassembly_android", "Loading main page: $assetPath")
         webView.loadUrl(assetPath)
     }
 

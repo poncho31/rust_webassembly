@@ -21,7 +21,7 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
     }
     
     fun handleActivityResult(requestCode: Int, resultCode: Int, data: Intent?, cameraHandler: CameraHandler) {
-        Log.d("WebAssemblyApp", "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
+        Log.d("rust_webassembly_android", "onActivityResult: requestCode=$requestCode, resultCode=$resultCode")
         
         when (requestCode) {
             PICK_IMAGE_REQUEST -> {
@@ -30,12 +30,12 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                         handleImageSelected(uri)
                     }
                 } else {
-                    Log.d("WebAssemblyApp", "Image picking cancelled")
+                    Log.d("rust_webassembly_android", "Image picking cancelled")
                     showToast("Sélection d'image annulée")
                 }
             }
             CAMERA_CAPTURE_REQUEST -> {
-                Log.d("WebAssemblyApp", "Camera capture result - resultCode: $resultCode, photoFile exists: ${cameraHandler.photoFile?.exists()}")
+                Log.d("rust_webassembly_android", "Camera capture result - resultCode: $resultCode, photoFile exists: ${cameraHandler.photoFile?.exists()}")
                 
                 if (resultCode == Activity.RESULT_OK) {
                     val filePath = cameraHandler.handlePhotoCaptured()
@@ -45,7 +45,7 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                         showToast("❌ Erreur lors de la sauvegarde de la photo")
                     }
                 } else {
-                    Log.d("WebAssemblyApp", "Photo capture cancelled")
+                    Log.d("rust_webassembly_android", "Photo capture cancelled")
                     showToast("Prise de photo annulée")
                     cameraHandler.handlePhotoCaptured() // Nettoyer même en cas d'annulation
                 }
@@ -56,7 +56,7 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                         handleVideoRecorded(uri)
                     }
                 } else {
-                    Log.d("WebAssemblyApp", "Video recording cancelled")
+                    Log.d("rust_webassembly_android", "Video recording cancelled")
                     showToast("Enregistrement vidéo annulé")
                 }
             }
@@ -66,7 +66,7 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                         handleFileSelected(uri)
                     }
                 } else {
-                    Log.d("WebAssemblyApp", "File picking cancelled")
+                    Log.d("rust_webassembly_android", "File picking cancelled")
                     showToast("Sélection de fichier annulée")
                 }
             }
@@ -74,7 +74,7 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
     }
     
     private fun handleImageSelected(uri: Uri) {
-        Log.d("WebAssemblyApp", "Processing selected image: $uri")
+        Log.d("rust_webassembly_android", "Processing selected image: $uri")
         try {
             val imageInfo = JSONObject().apply {
                 put("uri", uri.toString())
@@ -82,19 +82,19 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                 put("source", "gallery")
             }
             
-            Log.d("WebAssemblyApp", "Image info: $imageInfo")
+            Log.d("rust_webassembly_android", "Image info: $imageInfo")
             
             showToast("🖼️ Image sélectionnée depuis la galerie")
             processImageFile(uri)
             
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Error processing selected image: ${e.message}")
+            Log.e("rust_webassembly_android", "Error processing selected image: ${e.message}")
             showToast("Erreur lors du traitement de l'image: ${e.message}")
         }
     }
     
     private fun handleVideoRecorded(uri: Uri) {
-        Log.d("WebAssemblyApp", "Processing recorded video: $uri")
+        Log.d("rust_webassembly_android", "Processing recorded video: $uri")
         try {
             val videoInfo = JSONObject().apply {
                 put("uri", uri.toString())
@@ -102,17 +102,17 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                 put("source", "camera")
             }
             
-            Log.d("WebAssemblyApp", "Video info: $videoInfo")
+            Log.d("rust_webassembly_android", "Video info: $videoInfo")
             showToast("🎬 Vidéo enregistrée")
             
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Error processing recorded video: ${e.message}")
+            Log.e("rust_webassembly_android", "Error processing recorded video: ${e.message}")
             showToast("Erreur lors du traitement de la vidéo: ${e.message}")
         }
     }
     
     private fun handleFileSelected(uri: Uri) {
-        Log.d("WebAssemblyApp", "Processing selected file: $uri")
+        Log.d("rust_webassembly_android", "Processing selected file: $uri")
         try {
             val fileInfo = JSONObject().apply {
                 put("uri", uri.toString())
@@ -120,22 +120,22 @@ class ActivityResultHandler(private val activity: AppCompatActivity) {
                 put("source", "picker")
             }
             
-            Log.d("WebAssemblyApp", "File info: $fileInfo")
+            Log.d("rust_webassembly_android", "File info: $fileInfo")
             showToast("📁 Fichier sélectionné")
             
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Error processing selected file: ${e.message}")
+            Log.e("rust_webassembly_android", "Error processing selected file: ${e.message}")
             showToast("Erreur lors du traitement du fichier: ${e.message}")
         }
     }
     
     private fun processImageFile(uri: Uri) {
-        Log.d("WebAssemblyApp", "Processing image file in Kotlin: $uri")
+        Log.d("rust_webassembly_android", "Processing image file in Kotlin: $uri")
         try {
             // Traitement spécifique des images en Kotlin
             // Peut inclure redimensionnement, compression, etc.
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Error in image processing: ${e.message}")
+            Log.e("rust_webassembly_android", "Error in image processing: ${e.message}")
         }
     }
     

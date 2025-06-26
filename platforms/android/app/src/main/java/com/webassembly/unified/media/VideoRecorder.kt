@@ -28,7 +28,7 @@ class VideoRecorder(private val context: Context) {
                 
                 // Vérifier que la surface est disponible
                 if (surfaceHolder == null) {
-                    Log.e("WebAssemblyApp", "Surface holder not available")
+                    Log.e("rust_webassembly_android", "Surface holder not available")
                     throw Exception("Surface holder not available")
                 }
                 
@@ -42,7 +42,7 @@ class VideoRecorder(private val context: Context) {
                         ?: supportedVideoSizes[0]
                     
                     parameters.setPreviewSize(preferredSize.width, preferredSize.height)
-                    Log.d("WebAssemblyApp", "Camera preview size set to: ${preferredSize.width}x${preferredSize.height}")
+                    Log.d("rust_webassembly_android", "Camera preview size set to: ${preferredSize.width}x${preferredSize.height}")
                 }
                 
                 camera!!.parameters = parameters
@@ -50,12 +50,12 @@ class VideoRecorder(private val context: Context) {
                 // Configurer la prévisualisation avec la surface cachée
                 camera!!.setPreviewDisplay(surfaceHolder)
                 camera!!.startPreview()
-                Log.d("WebAssemblyApp", "Camera preview started")
+                Log.d("rust_webassembly_android", "Camera preview started")
                 
                 // Déverrouiller la caméra pour MediaRecorder
                 camera!!.unlock()
             } catch (e: Exception) {
-                Log.e("WebAssemblyApp", "Failed to open camera and start preview: ${e.message}")
+                Log.e("rust_webassembly_android", "Failed to open camera and start preview: ${e.message}")
                 camera?.release()
                 camera = null
                 throw e
@@ -85,7 +85,7 @@ class VideoRecorder(private val context: Context) {
                     prepare()
                     start()
                 } catch (e: Exception) {
-                    Log.e("WebAssemblyApp", "MediaRecorder prepare/start failed: ${e.message}")
+                    Log.e("rust_webassembly_android", "MediaRecorder prepare/start failed: ${e.message}")
                     // Nettoyer en cas d'erreur
                     release()
                     camera?.release()
@@ -95,13 +95,13 @@ class VideoRecorder(private val context: Context) {
             }
             
             isVideoRecording = true
-            Log.d("WebAssemblyApp", "Video recording started: ${videoOutputFile!!.absolutePath}")
+            Log.d("rust_webassembly_android", "Video recording started: ${videoOutputFile!!.absolutePath}")
             
             showToast("🎥 Enregistrement vidéo démarré")
             return true
             
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Video recording failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Video recording failed: ${e.message}")
             // Nettoyer en cas d'erreur
             videoMediaRecorder?.release()
             videoMediaRecorder = null
@@ -115,7 +115,7 @@ class VideoRecorder(private val context: Context) {
     }
     
     fun stopVideoRecording(): String {
-        Log.d("WebAssemblyApp", "Stopping video recording")
+        Log.d("rust_webassembly_android", "Stopping video recording")
         return try {
             videoMediaRecorder?.apply {
                 stop()
@@ -129,9 +129,9 @@ class VideoRecorder(private val context: Context) {
                     stopPreview() // Arrêter la prévisualisation
                     lock() // Verrouiller à nouveau la caméra
                     release()
-                    Log.d("WebAssemblyApp", "Camera preview stopped and camera released")
+                    Log.d("rust_webassembly_android", "Camera preview stopped and camera released")
                 } catch (e: Exception) {
-                    Log.w("WebAssemblyApp", "Error stopping camera preview: ${e.message}")
+                    Log.w("rust_webassembly_android", "Error stopping camera preview: ${e.message}")
                     release() // S'assurer que la caméra est libérée même en cas d'erreur
                 }
             }
@@ -139,7 +139,7 @@ class VideoRecorder(private val context: Context) {
             
             isVideoRecording = false
             val filePath = videoOutputFile?.absolutePath ?: ""
-            Log.d("WebAssemblyApp", "Video recording stopped: $filePath")
+            Log.d("rust_webassembly_android", "Video recording stopped: $filePath")
             
             // Copier le fichier vers le répertoire public pour qu'il soit accessible dans l'app galerie
             if (filePath.isNotEmpty()) {
@@ -148,16 +148,16 @@ class VideoRecorder(private val context: Context) {
                     try {
                         val publicFilePath = FileUtils.copyVideoToPublicDirectory(context, sourceFile)
                         if (publicFilePath != null) {
-                            Log.d("WebAssemblyApp", "Video copied to public directory: $publicFilePath")
+                            Log.d("rust_webassembly_android", "Video copied to public directory: $publicFilePath")
                             showToast("🎬 Vidéo sauvée dans Galerie: ${sourceFile.name} (${FileUtils.formatFileSize(sourceFile.length())})")
                             return publicFilePath
                         } else {
                             // Si la copie échoue, garder le fichier dans le répertoire privé
-                            Log.w("WebAssemblyApp", "Failed to copy video to public directory, keeping in private directory")
+                            Log.w("rust_webassembly_android", "Failed to copy video to public directory, keeping in private directory")
                             showToast("🎬 Vidéo sauvée: ${sourceFile.name} (${FileUtils.formatFileSize(sourceFile.length())})")
                         }
                     } catch (e: Exception) {
-                        Log.e("WebAssemblyApp", "Error copying video to public directory: ${e.message}")
+                        Log.e("rust_webassembly_android", "Error copying video to public directory: ${e.message}")
                         // Garder le fichier dans le répertoire privé en cas d'erreur
                         showToast("🎬 Vidéo sauvée: ${sourceFile.name}")
                     }
@@ -167,7 +167,7 @@ class VideoRecorder(private val context: Context) {
             }
             filePath
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Stop video recording failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Stop video recording failed: ${e.message}")
             // Nettoyer en cas d'erreur
             videoMediaRecorder?.release()
             videoMediaRecorder = null

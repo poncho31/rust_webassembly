@@ -34,7 +34,7 @@ class CameraHandler(private val activity: AppCompatActivity) {
                 photoFile!!
             )
             
-            Log.d("WebAssemblyApp", "Photo will be saved to: $currentPhotoPath")
+            Log.d("rust_webassembly_android", "Photo will be saved to: $currentPhotoPath")
             
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
@@ -45,11 +45,11 @@ class CameraHandler(private val activity: AppCompatActivity) {
             if (intent.resolveActivity(activity.packageManager) != null) {
                 activity.startActivityForResult(intent, CAMERA_CAPTURE_REQUEST)
             } else {
-                Log.e("WebAssemblyApp", "No camera app available")
+                Log.e("rust_webassembly_android", "No camera app available")
                 throw Exception("Aucune application appareil photo disponible")
             }
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Camera failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Camera failed: ${e.message}")
             throw e
         }
     }
@@ -59,35 +59,35 @@ class CameraHandler(private val activity: AppCompatActivity) {
             val intent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
             activity.startActivityForResult(intent, 3)
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Video recording failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Video recording failed: ${e.message}")
             throw e
         }
     }
     
     fun handlePhotoCaptured(): String? {
-        Log.d("WebAssemblyApp", "Processing captured photo: $currentPhotoPath")
+        Log.d("rust_webassembly_android", "Processing captured photo: $currentPhotoPath")
         return try {
             currentPhotoPath?.let { path ->
                 val file = File(path)
                 if (file.exists()) {
                     val publicFilePath = FileUtils.copyPhotoToPublicDirectory(activity, file)
                     if (publicFilePath != null) {
-                        Log.d("WebAssemblyApp", "Photo copied to public directory: $publicFilePath")
+                        Log.d("rust_webassembly_android", "Photo copied to public directory: $publicFilePath")
                         showToast("📸 Photo sauvée dans Galerie: ${file.name} (${FileUtils.formatFileSize(file.length())})")
                         return publicFilePath
                     } else {
-                        Log.w("WebAssemblyApp", "Failed to copy photo to public directory, keeping in private directory")
+                        Log.w("rust_webassembly_android", "Failed to copy photo to public directory, keeping in private directory")
                         showToast("📸 Photo sauvée: ${file.name} (${FileUtils.formatFileSize(file.length())})")
                         return path
                     }
                 } else {
-                    Log.w("WebAssemblyApp", "Photo file does not exist: $path")
+                    Log.w("rust_webassembly_android", "Photo file does not exist: $path")
                     showToast("❌ Fichier photo introuvable")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Error processing captured photo: ${e.message}")
+            Log.e("rust_webassembly_android", "Error processing captured photo: ${e.message}")
             showToast("❌ Erreur lors de la sauvegarde de la photo: ${e.message}")
             null
         } finally {

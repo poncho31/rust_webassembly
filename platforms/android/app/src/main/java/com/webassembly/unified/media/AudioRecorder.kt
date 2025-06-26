@@ -34,20 +34,20 @@ class AudioRecorder(private val context: Context) {
             }
             
             isRecording = true
-            Log.d("WebAssemblyApp", "Recording started: ${outputFile!!.absolutePath}")
+            Log.d("rust_webassembly_android", "Recording started: ${outputFile!!.absolutePath}")
             
             showToast("🎤 Enregistrement démarré")
             return true
             
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Recording failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Recording failed: ${e.message}")
             showToast("Erreur d'enregistrement: ${e.message}")
             return false
         }
     }
     
     fun stopRecording(): String {
-        Log.d("WebAssemblyApp", "Stopping audio recording")
+        Log.d("rust_webassembly_android", "Stopping audio recording")
         return try {
             mediaRecorder?.apply {
                 stop()
@@ -56,7 +56,7 @@ class AudioRecorder(private val context: Context) {
             mediaRecorder = null
             isRecording = false
             val filePath = outputFile?.absolutePath ?: ""
-            Log.d("WebAssemblyApp", "Recording stopped: $filePath")
+            Log.d("rust_webassembly_android", "Recording stopped: $filePath")
             
             // Copier le fichier vers le répertoire public pour qu'il soit accessible dans l'app musique
             if (filePath.isNotEmpty()) {
@@ -65,16 +65,16 @@ class AudioRecorder(private val context: Context) {
                     try {
                         val publicFilePath = FileUtils.copyAudioToPublicDirectory(context, sourceFile)
                         if (publicFilePath != null) {
-                            Log.d("WebAssemblyApp", "Audio copied to public directory: $publicFilePath")
+                            Log.d("rust_webassembly_android", "Audio copied to public directory: $publicFilePath")
                             showToast("🎵 Enregistrement sauvé dans Musique: ${sourceFile.name} (${FileUtils.formatFileSize(sourceFile.length())})")
                             return publicFilePath
                         } else {
                             // Si la copie échoue, garder le fichier dans le répertoire privé
-                            Log.w("WebAssemblyApp", "Failed to copy to public directory, keeping in private directory")
+                            Log.w("rust_webassembly_android", "Failed to copy to public directory, keeping in private directory")
                             showToast("🎵 Enregistrement sauvé: ${sourceFile.name} (${FileUtils.formatFileSize(sourceFile.length())})")
                         }
                     } catch (e: Exception) {
-                        Log.e("WebAssemblyApp", "Error copying audio to public directory: ${e.message}")
+                        Log.e("rust_webassembly_android", "Error copying audio to public directory: ${e.message}")
                         // Garder le fichier dans le répertoire privé en cas d'erreur
                         showToast("🎵 Enregistrement sauvé: ${sourceFile.name}")
                     }
@@ -84,7 +84,7 @@ class AudioRecorder(private val context: Context) {
             }
             filePath
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Stop recording failed: ${e.message}")
+            Log.e("rust_webassembly_android", "Stop recording failed: ${e.message}")
             isRecording = false
             showToast("Erreur arrêt enregistrement: ${e.message}")
             ""

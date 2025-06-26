@@ -13,7 +13,7 @@ fn init_logging() {
         android_logger::init_once(
             Config::default()
                 .with_max_level(log::LevelFilter::Debug)
-                .with_tag("WebAssemblyApp")
+                .with_tag("rust_webassembly_android")
         );
         info!("Android logging initialized");
     });

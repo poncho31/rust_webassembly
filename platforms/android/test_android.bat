@@ -12,4 +12,4 @@ adb shell am start -n com.webassembly.unified/.MainActivity
 
 echo Monitoring logs (Ctrl+C to stop)...
 adb logcat -c
-adb logcat -s WebAssemblyApp
+adb logcat -s rust_webassembly_android

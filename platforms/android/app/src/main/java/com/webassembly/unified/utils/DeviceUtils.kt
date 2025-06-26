@@ -20,25 +20,25 @@ object DeviceUtils {
             put("device", Build.DEVICE)
             put("product", Build.PRODUCT)
         }
-        Log.d("WebAssemblyApp", "Device info: $info")
+        Log.d("rust_webassembly_android", "Device info: $info")
         return info.toString()
     }
     
     fun getBatteryLevel(context: Context): Int {
-        Log.d("WebAssemblyApp", "Getting battery level")
+        Log.d("rust_webassembly_android", "Getting battery level")
         return try {
             val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-            Log.d("WebAssemblyApp", "Battery level: $batteryLevel%")
+            Log.d("rust_webassembly_android", "Battery level: $batteryLevel%")
             batteryLevel
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Failed to get battery level: ${e.message}")
+            Log.e("rust_webassembly_android", "Failed to get battery level: ${e.message}")
             -1
         }
     }
     
     fun getNetworkInfo(context: Context): String {
-        Log.d("WebAssemblyApp", "Getting network info")
+        Log.d("rust_webassembly_android", "Getting network info")
         return try {
             val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val networkInfo = JSONObject()
@@ -101,10 +101,10 @@ object DeviceUtils {
             }
             
             val result = networkInfo.toString()
-            Log.d("WebAssemblyApp", "Network info: $result")
+            Log.d("rust_webassembly_android", "Network info: $result")
             result
         } catch (e: Exception) {
-            Log.e("WebAssemblyApp", "Failed to get network info: ${e.message}")
+            Log.e("rust_webassembly_android", "Failed to get network info: ${e.message}")
             "{\"connected\": false, \"type\": \"Error\", \"error\": \"${e.message}\"}"
         }
     }

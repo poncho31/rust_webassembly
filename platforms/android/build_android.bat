@@ -369,7 +369,7 @@ echo.
 echo [INFO] Monitoring logs (Ctrl+C to stop)...
 echo ---------------------------------------------------------------------------
 adb logcat -c
-adb logcat -s WebAssemblyApp
+adb logcat -s rust_webassembly_android
 
 goto :eof
 

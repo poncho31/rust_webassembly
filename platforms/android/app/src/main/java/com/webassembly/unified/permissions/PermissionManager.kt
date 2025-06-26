@@ -24,16 +24,16 @@ class PermissionManager(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            Log.d("WebAssemblyApp", "Permission granted - executing pending action: $pendingAction")
+            Log.d("rust_webassembly_android", "Permission granted - executing pending action: $pendingAction")
         } else {
-            Log.d("WebAssemblyApp", "Permission denied")
+            Log.d("rust_webassembly_android", "Permission denied")
             clearPendingActions()
         }
         onPermissionResult(pendingAction, isGranted)
     }
     
     fun requestPermission(permission: String) {
-        Log.d("WebAssemblyApp", "Requesting permission: $permission")
+        Log.d("rust_webassembly_android", "Requesting permission: $permission")
         when (permission) {
             "camera" -> requestPermissionLauncher.launch(Manifest.permission.CAMERA)
             "microphone" -> requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -65,7 +65,7 @@ class PermissionManager(
             else -> false
         }
         
-        Log.d("WebAssemblyApp", "Permission $permission: $result")
+        Log.d("rust_webassembly_android", "Permission $permission: $result")
         return result
     }
     
