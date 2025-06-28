@@ -1,4 +1,4 @@
-package com.webassembly.unified.utils
+package com.main.utils
 
 import android.content.Context
 import android.net.ConnectivityManager

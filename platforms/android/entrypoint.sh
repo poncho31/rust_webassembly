@@ -144,9 +144,9 @@ echo "=== INSTALLATION DE L'APK ==="
 
 # Vérifier si l'application est déjà installée
 echo "Vérification de l'installation existante..."
-if adb -s "$DEVICE_ID" shell pm list packages | grep -q "com.webassembly.unified"; then
+if adb -s "$DEVICE_ID" shell pm list packages | grep -q "com.main"; then
     echo "⚠ Application déjà installée, désinstallation de l'ancienne version..."
-    if adb -s "$DEVICE_ID" uninstall com.webassembly.unified; then
+    if adb -s "$DEVICE_ID" uninstall com.main; then
         echo "✓ Ancienne version désinstallée"
     else
         echo "⚠ Impossible de désinstaller l'ancienne version (peut-être déjà supprimée)"
@@ -172,7 +172,7 @@ else
 fi
 
 echo "Lancement de l'application..."
-adb -s "$DEVICE_ID" shell am start -n com.webassembly.unified/.MainActivity
+adb -s "$DEVICE_ID" shell am start -n com.main/.MainActivity
 
 echo "=== LOGS DE L'APPLICATION ==="
 echo "Nettoyage des logs précédents..."

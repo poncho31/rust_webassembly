@@ -1,5 +1,6 @@
-import { translate } from '/js/translations.js';
-import init from "/pkg/client.js";
+import { translate } from './translations.js';
+import init from "../pkg/client.js";
+
 // Traduire tous les éléments avec data-translate
 document.querySelectorAll('[data-translate]').forEach(element => {
     const key = element.getAttribute('data-translate');

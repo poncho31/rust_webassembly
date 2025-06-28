@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "WebAssembly Unified"
+rootProject.name = "Rust WebAssembly Android"
 include ':app'

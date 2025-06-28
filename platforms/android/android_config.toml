@@ -1,6 +1,6 @@
 [android]
-package_name = "com.webassembly.unified"
-app_name = "WebAssembly Unified"
+package_name = "com.main"
+app_name = "Rust WebAssembly Android"
 server_url = "http://localhost:8080"
 min_sdk = 21
 target_sdk = 34

@@ -26,8 +26,8 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo Appareil detecte. Desinstallation de com.webassembly.unified...
-adb uninstall com.webassembly.unified
+echo Appareil detecte. Desinstallation de com.main...
+adb uninstall com.main
 
 if %ERRORLEVEL% equ 0 (
     echo ✓ Application desinstallee avec succes !

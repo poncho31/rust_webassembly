@@ -24,8 +24,8 @@ if ! adb devices | grep -v "List of devices" | grep -q "device$"; then
 fi
 
 echo
-echo "Appareil détecté. Désinstallation de com.webassembly.unified..."
-if adb uninstall com.webassembly.unified; then
+echo "Appareil détecté. Désinstallation de com.main..."
+if adb uninstall com.main; then
     echo "✓ Application désinstallée avec succès !"
 else
     echo "⚠ Application non trouvée ou déjà désinstallée"

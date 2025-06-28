@@ -21,7 +21,7 @@ fn init_logging() {
 
 /// Initialize the Rust backend
 #[no_mangle]
-pub extern "C" fn Java_com_webassembly_unified_MainActivity_initRust(
+pub extern "C" fn Java_com_main_MainActivity_initRust(
     env: JNIEnv,
     _class: JClass,
 ) -> jboolean {
@@ -36,7 +36,7 @@ pub extern "C" fn Java_com_webassembly_unified_MainActivity_initRust(
 
 /// Get the server URL that the WebView should load
 #[no_mangle]
-pub extern "C" fn Java_com_webassembly_unified_MainActivity_getServerUrl(
+pub extern "C" fn Java_com_main_MainActivity_getServerUrl(
     env: JNIEnv,
     _class: JClass,
 ) -> jstring {
@@ -54,7 +54,7 @@ pub extern "C" fn Java_com_webassembly_unified_MainActivity_getServerUrl(
 
 /// Handle WebView messages from JavaScript
 #[no_mangle]
-pub extern "C" fn Java_com_webassembly_unified_MainActivity_handleWebViewMessage(
+pub extern "C" fn Java_com_main_MainActivity_handleWebViewMessage(
     mut env: JNIEnv,
     _class: JClass,
     message: JString,
@@ -104,7 +104,7 @@ fn process_client_message(message: &str) -> String {
 
 /// Start embedded server (optional - for offline mode)
 #[no_mangle]
-pub extern "C" fn Java_com_webassembly_unified_MainActivity_startEmbeddedServer(
+pub extern "C" fn Java_com_main_MainActivity_startEmbeddedServer(
     env: JNIEnv,
     _class: JClass,
     port: i32,

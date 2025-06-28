@@ -1,4 +1,4 @@
-package com.webassembly.unified.media
+package com.main.media
 
 import android.content.Context
 import android.hardware.Camera
@@ -7,7 +7,7 @@ import android.os.Build
 import android.util.Log
 import android.view.SurfaceHolder
 import android.widget.Toast
-import com.webassembly.unified.utils.FileUtils
+import com.main.utils.FileUtils
 import java.io.File
 
 class VideoRecorder(private val context: Context) {

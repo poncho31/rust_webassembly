@@ -1,4 +1,4 @@
-package com.webassembly.unified.permissions
+package com.main.permissions
 
 import android.Manifest
 import android.content.Context

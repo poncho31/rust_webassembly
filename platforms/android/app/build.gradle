@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.webassembly.unified'
+    namespace 'com.main'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.webassembly.unified"
+        applicationId "com.main"
         minSdk 21
         targetSdk 34
         versionCode 1

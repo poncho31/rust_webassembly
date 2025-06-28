@@ -1,4 +1,4 @@
-package com.webassembly.unified.interfaces
+package com.main.interfaces
 
 import android.content.Context
 import android.content.Intent
@@ -13,12 +13,12 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.webassembly.unified.media.AudioRecorder
-import com.webassembly.unified.media.CameraHandler
-import com.webassembly.unified.media.VideoRecorder
-import com.webassembly.unified.permissions.PermissionManager
-import com.webassembly.unified.utils.DeviceUtils
-import com.webassembly.unified.utils.FileUtils
+import com.main.media.AudioRecorder
+import com.main.media.CameraHandler
+import com.main.media.VideoRecorder
+import com.main.permissions.PermissionManager
+import com.main.utils.DeviceUtils
+import com.main.utils.FileUtils
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream

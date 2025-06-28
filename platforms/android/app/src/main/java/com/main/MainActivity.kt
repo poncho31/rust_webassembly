@@ -1,4 +1,4 @@
-package com.webassembly.unified
+package com.main
 
 import android.os.Bundle
 import android.util.Log
@@ -20,12 +20,13 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Build
 import android.content.Intent
 import android.app.Activity
-import com.webassembly.unified.permissions.PermissionManager
-import com.webassembly.unified.media.AudioRecorder
-import com.webassembly.unified.media.VideoRecorder
-import com.webassembly.unified.media.CameraHandler
-import com.webassembly.unified.handlers.ActivityResultHandler
-import com.webassembly.unified.interfaces.WebAppInterface
+import com.main.permissions.PermissionManager
+import com.main.media.AudioRecorder
+import com.main.media.VideoRecorder
+import com.main.media.CameraHandler
+import com.main.handlers.ActivityResultHandler
+import com.main.interfaces.WebAppInterface
+import com.main.R
 
 class MainActivity : AppCompatActivity() {
     

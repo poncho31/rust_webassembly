@@ -1,4 +1,4 @@
-package com.webassembly.unified.media
+package com.main.media
 
 import android.content.Context
 import android.content.Intent
@@ -9,7 +9,7 @@ import android.view.SurfaceHolder
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
-import com.webassembly.unified.utils.FileUtils
+import com.main.utils.FileUtils
 import java.io.File
 
 class CameraHandler(private val activity: AppCompatActivity) {
@@ -30,7 +30,7 @@ class CameraHandler(private val activity: AppCompatActivity) {
             
             val photoURI = FileProvider.getUriForFile(
                 activity,
-                "com.webassembly.unified.fileprovider",
+                "com.main.fileprovider",
                 photoFile!!
             )
             

@@ -359,7 +359,7 @@ if errorlevel 1 (
 
 
 echo [INFO] Starting application...
-adb shell am start -n com.webassembly.unified/.MainActivity
+adb shell am start -n com.main/.MainActivity
 
 echo.
 echo [INFO] Connected device(s):

@@ -1,4 +1,4 @@
-package com.webassembly.unified.handlers
+package com.main.handlers
 
 import android.app.Activity
 import android.content.Intent
@@ -6,8 +6,8 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.webassembly.unified.media.CameraHandler
-import com.webassembly.unified.utils.FileUtils
+import com.main.media.CameraHandler
+import com.main.utils.FileUtils
 import org.json.JSONObject
 import java.io.File
 
