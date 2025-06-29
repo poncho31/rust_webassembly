@@ -30,6 +30,11 @@ import com.main.R
 
 class MainActivity : AppCompatActivity() {
     
+    // Native functions
+    external fun initRust(): Boolean
+    external fun getServerUrl(): String
+    external fun testServerConnectivity(): Boolean
+    
     private lateinit var webView: WebView
     private var hiddenSurfaceView: SurfaceView? = null
     private var surfaceHolder: SurfaceHolder? = null
@@ -139,12 +144,16 @@ class MainActivity : AppCompatActivity() {
     private fun restoreState(savedInstanceState: Bundle?) {
         savedInstanceState?.let { bundle ->
             val currentPhotoPath = bundle.getString("currentPhotoPath")
-            webViewUrl = bundle.getString("webViewUrl")
+            val savedUrl = bundle.getString("webViewUrl")
             permissionManager.pendingAction = bundle.getString("pendingAction")
             permissionManager.pendingSmsNumber = bundle.getString("pendingSmsNumber")
             permissionManager.pendingSmsMessage = bundle.getString("pendingSmsMessage")
             
             Log.d("rust_webassembly_android", "Restored state - currentPhotoPath: $currentPhotoPath")
+            Log.d("rust_webassembly_android", "Restored state - savedUrl: $savedUrl (ignoring for fresh server load)")
+            
+            // Don't restore webViewUrl - we want to always load from the server
+            // webViewUrl = savedUrl
             
             // Restaurer l'état du gestionnaire de caméra
             cameraHandler.restoreState(currentPhotoPath)
@@ -178,10 +187,17 @@ class MainActivity : AppCompatActivity() {
             databaseEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
             
+            // Allow network access for localhost
+            allowFileAccessFromFileURLs = false // Disable for security
+            allowUniversalAccessFromFileURLs = false // Disable for security
+            blockNetworkImage = false
+            blockNetworkLoads = false
+            
             // Modern alternatives to deprecated methods
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                allowFileAccessFromFileURLs = true
-                allowUniversalAccessFromFileURLs = true
+                // Keep these disabled when loading from HTTP server
+                allowFileAccessFromFileURLs = false
+                allowUniversalAccessFromFileURLs = false
             }
             
             // Enable debugging for WebView
@@ -292,14 +308,73 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadMainPage() {
-        val assetPath = "file:///android_asset/static/index.html"
-        Log.d("rust_webassembly_android", "Loading main page: $assetPath")
-        webView.loadUrl(assetPath)
+        Log.d("rust_webassembly_android", "loadMainPage() called")
+        
+        // Initialize Rust backend and start the embedded server
+        Log.d("rust_webassembly_android", "Initializing Rust backend...")
+        val serverStarted = initRust()
+        Log.d("rust_webassembly_android", "Rust initialization result: $serverStarted")
+        
+        if (!serverStarted) {
+            Log.e("rust_webassembly_android", "Failed to start Rust server")
+            // Fallback to asset files if server fails to start
+            val assetPath = "file:///android_asset/static/index.html"
+            Log.d("rust_webassembly_android", "Falling back to asset path: $assetPath")
+            webView.loadUrl(assetPath)
+            return
+        }
+        
+        // Test server connectivity after startup
+        Log.d("rust_webassembly_android", "Testing server connectivity...")
+        val isConnectable = testServerConnectivity()
+        Log.d("rust_webassembly_android", "Server connectivity test result: $isConnectable")
+        
+        if (!isConnectable) {
+            Log.w("rust_webassembly_android", "Server is not connectable yet, waiting and retrying...")
+            
+            // Try again after a short delay
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                val retryConnectivity = testServerConnectivity()
+                Log.d("rust_webassembly_android", "Retry connectivity test result: $retryConnectivity")
+                
+                if (!retryConnectivity) {
+                    Log.e("rust_webassembly_android", "Server still not connectable after retry, falling back to assets")
+                    val assetPath = "file:///android_asset/static/index.html"
+                    Log.d("rust_webassembly_android", "Falling back to asset path: $assetPath")
+                    webView.loadUrl(assetPath)
+                    return@postDelayed
+                }
+                
+                // Get the server URL from the Rust backend
+                Log.d("rust_webassembly_android", "Getting server URL from Rust...")
+                val serverUrl = getServerUrl()
+                Log.d("rust_webassembly_android", "Server URL received: $serverUrl")
+                Log.d("rust_webassembly_android", "Loading WebView with server URL: $serverUrl")
+                webView.loadUrl(serverUrl)
+                Log.d("rust_webassembly_android", "WebView.loadUrl() called with: $serverUrl")
+            }, 2000) // Wait 2 seconds before retry
+            
+            return
+        }
+        
+        // Get the server URL from the Rust backend
+        Log.d("rust_webassembly_android", "Getting server URL from Rust...")
+        val serverUrl = getServerUrl()
+        Log.d("rust_webassembly_android", "Server URL received: $serverUrl")
+        Log.d("rust_webassembly_android", "Loading WebView with server URL: $serverUrl")
+        webView.loadUrl(serverUrl)
+        Log.d("rust_webassembly_android", "WebView.loadUrl() called with: $serverUrl")
     }
 
     @Deprecated("This method has been deprecated in favor of using the Activity Result API")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         activityResultHandler.handleActivityResult(requestCode, resultCode, data, cameraHandler)
+    }
+    
+    companion object {
+        init {
+            System.loadLibrary("webassembly_android")
+        }
     }
 }

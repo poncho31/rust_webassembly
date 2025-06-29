@@ -9,6 +9,7 @@ use std::env;
 use actix_cors::Cors;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use core::_database::DatabaseQuery;
+use serde_json;
 
 // Import des contrôleurs - ils doivent être accessibles depuis ce module
 use crate::controllers::ping_controller;
@@ -119,7 +120,7 @@ pub async fn start_full_web_server() -> std::io::Result<()> {
         SslConfig::print_ssl_info();
     }
 
-    // Initialisation de la base de données
+    // Initialisation de la base de données - OBLIGATOIRE pour le démarrage
     println!("🗄️ Initializing database connection...");
     let db_pool = match core::_database::init_db().await {
         Ok(pool) => {
@@ -127,9 +128,9 @@ pub async fn start_full_web_server() -> std::io::Result<()> {
             pool
         },
         Err(e) => {
-            println!("⚠️ Warning: Could not connect to database: {}", e);
-            println!("⚠️ Server will continue without database functionality");
-            // Créer un pool vide ou utiliser une option
+            println!("❌ FATAL ERROR: Could not connect to database: {}", e);
+            println!("❌ Database connection is REQUIRED for server startup");
+            println!("❌ Please check your DATABASE_URL and ensure the database is accessible");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::ConnectionRefused,
                 format!("Database connection failed: {}", e)
@@ -285,6 +286,69 @@ fn print_server_info(config: &WebServerConfig) {
 fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf, std::path::PathBuf)> {
     // Déterminer le répertoire racine du projet
     let current_dir = std::env::current_dir()?;
+    
+    // Vérifier si on est sur Android en cherchant les variables d'environnement Android
+    let is_android = std::env::var("ENVIRONMENT").unwrap_or_default() == "android";
+    
+    if is_android {
+        println!("🤖 Android environment detected, using Android asset paths...");
+        
+        // Chemins spécifiques pour Android - utiliser les assets copiés pendant le build
+        let potential_android_paths = vec![
+            // Chemins natifs Android à l'exécution
+            std::path::PathBuf::from("/android_asset/static"),
+            // Chemins de développement (pendant la compilation/test)
+            std::path::PathBuf::from("./app/src/main/assets/static"),
+            std::path::PathBuf::from("../app/src/main/assets/static"),  
+            std::path::PathBuf::from("../../app/src/main/assets/static"),
+            // Chemins relatifs possibles
+            std::path::PathBuf::from("./assets/static"),
+            std::path::PathBuf::from("../assets/static"),
+            // Fallback vers les sources
+            std::path::PathBuf::from("../../../client/static"),
+            std::path::PathBuf::from("../../client/static"),
+        ];
+        
+        println!("🔍 Searching for Android static files...");
+        println!("🔍 Current working directory: {:?}", current_dir);
+        
+        for path in potential_android_paths {
+            println!("🔍 Checking path: {:?}", path);
+            if path.exists() {
+                println!("✅ Path exists: {:?}", path);
+                if path.join("index.html").exists() {
+                    println!("✅ index.html found in: {:?}", path);
+                    let pkg_path = path.join("pkg");
+                    let favicon_path = path.join("images").join("icons").join("favicon.ico");
+                    
+                    println!("✅ Using Android static path: {:?}", path);
+                    println!("✅ Using Android pkg path: {:?}", pkg_path);
+                    println!("✅ Using Android favicon path: {:?}", favicon_path);
+                    
+                    return Ok((path, pkg_path, favicon_path));
+                } else {
+                    println!("❌ index.html not found in: {:?}", path);
+                    // Lister le contenu pour debug
+                    if let Ok(entries) = std::fs::read_dir(&path) {
+                        let files: Vec<String> = entries
+                            .filter_map(|entry| entry.ok())
+                            .map(|entry| entry.file_name().to_string_lossy().to_string())
+                            .collect();
+                        println!("   📁 Directory contents: {:?}", files);
+                    }
+                }
+            } else {
+                println!("❌ Path does not exist: {:?}", path);
+            }
+        }
+        
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound, 
+            "Android static files not found! Make sure the build script copied client/static to app/src/main/assets/static"
+        ));
+    }
+    
+    // Code normal pour desktop
     let project_root = if current_dir.ends_with("server") {
         // Si on est dans le dossier server, remonter au parent
         current_dir.parent().unwrap().to_path_buf()
@@ -315,3 +379,5 @@ fn get_static_path() -> std::io::Result<(std::path::PathBuf, std::path::PathBuf,
 
     Ok((static_path, pkg_path, favicon_path))
 }
+
+

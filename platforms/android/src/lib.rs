@@ -3,9 +3,11 @@ use jni::objects::{JClass, JString, JObject};
 use jni::sys::{jstring, jboolean};
 use android_logger::{Config, FilterBuilder};
 use log::{info, error, warn};
-use std::sync::{Once, Arc, Mutex};
+use std::sync::{Once, Arc, Mutex, mpsc};
+use std::time::Duration;
 use tokio::runtime::Runtime;
 use std::thread;
+use std::net::TcpStream;
 
 // Import du serveur existant
 use server_lib::{start_full_web_server, WebServerConfig};
@@ -78,19 +80,65 @@ fn start_embedded_server() -> Result<(), Box<dyn std::error::Error + Send + Sync
         
         let rt_clone = rt.clone();
         
+        // Créer un canal pour recevoir le statut du serveur
+        let (tx, rx) = mpsc::channel::<Result<String, String>>();
+        
         // Démarrer le serveur dans un thread séparé
-        let server_handle = thread::spawn(move || {
+        let _server_handle = thread::spawn(move || {
             let rt_guard = rt_clone.lock().unwrap();
             rt_guard.block_on(async {
                 info!("Starting embedded web server for Android...");
                 
-                // Utiliser la fonction start_full_web_server existante
+                // Log les variables d'environnement importantes
+                info!("SERVER_HOST: {}", std::env::var("SERVER_HOST").unwrap_or("NOT_SET".to_string()));
+                info!("SERVER_PORT: {}", std::env::var("SERVER_PORT").unwrap_or("NOT_SET".to_string()));
+                info!("SSL_ENABLED: {}", std::env::var("SSL_ENABLED").unwrap_or("NOT_SET".to_string()));
+                info!("DATABASE_URL: {}", std::env::var("DATABASE_URL").unwrap_or("NOT_SET".to_string()));
+                info!("ENVIRONMENT: {}", std::env::var("ENVIRONMENT").unwrap_or("NOT_SET".to_string()));
+                
+                // Utiliser le serveur complet comme demandé
+                info!("Starting full web server for Android...");
+                
+                // Test la connectivité au port avant de démarrer
+                let host = std::env::var("SERVER_HOST").unwrap_or("127.0.0.1".to_string());
+                let port = std::env::var("SERVER_PORT").unwrap_or("8088".to_string()).parse::<u16>().unwrap_or(8088);
+                
+                // Vérifier si le port est libre
+                if let Ok(listener) = std::net::TcpListener::bind((host.clone(), port)) {
+                    info!("Port {}:{} is available for binding", host, port);
+                    drop(listener); // Libérer le port pour Actix
+                } else {
+                    let error_msg = format!("Port {}:{} is already in use or not available", host, port);
+                    error!("{}", error_msg);
+                    let _ = tx.send(Err(error_msg));
+                    return;
+                }
+                
+                // Tenter de démarrer le serveur
                 match start_full_web_server().await {
                     Ok(_) => {
-                        info!("Server stopped gracefully");
+                        info!("Full web server stopped gracefully");
+                        let _ = tx.send(Ok("Server started successfully".to_string()));
                     },
                     Err(e) => {
-                        error!("Server error: {}", e);
+                        error!("Full web server startup failed: {}", e);
+                        error!("Error kind: {:?}", e.kind());
+                        error!("Error details: {:#?}", e);
+                        
+                        // Try to be more specific about the error
+                        let error_string = format!("{}", e);
+                        let detailed_error = if error_string.contains("database") || error_string.contains("Database") {
+                            format!("Database connection issue: {} - check DATABASE_URL and SQLite setup", error_string)
+                        } else if error_string.contains("bind") || error_string.contains("address") {
+                            format!("Network binding issue: {} - check if port {} is available", error_string, port)
+                        } else if error_string.contains("static") || error_string.contains("file") {
+                            format!("Static files issue: {} - check if assets are accessible", error_string)
+                        } else {
+                            format!("Server startup error: {}", error_string)
+                        };
+                        
+                        error!("{}", detailed_error);
+                        let _ = tx.send(Err(detailed_error));
                     }
                 }
             });
@@ -98,8 +146,21 @@ fn start_embedded_server() -> Result<(), Box<dyn std::error::Error + Send + Sync
         
         SERVER_RUNTIME = Some(rt);
         
-        // Attendre un peu pour que le serveur démarre
-        thread::sleep(std::time::Duration::from_millis(1000));
+        // Attendre un signal du serveur ou timeout
+        info!("Waiting for server startup status...");
+        match rx.recv_timeout(std::time::Duration::from_millis(5000)) {
+            Ok(Ok(message)) => {
+                info!("Server startup success: {}", message);
+            },
+            Ok(Err(error)) => {
+                error!("Server failed to start: {}", error);
+                return Err(format!("Server startup failed: {}", error).into());
+            },
+            Err(_) => {
+                warn!("Server startup timeout - this might indicate a critical error");
+                return Err("Server startup timeout - server may have failed to start".into());
+            }
+        }
         
         Ok(())
     }
@@ -114,7 +175,7 @@ pub extern "C" fn Java_com_main_MainActivity_getServerUrl(
     init_logging();
     
     // URL du serveur local pour Android
-    let server_url = "http://127.0.0.1:8080";
+    let server_url = "http://127.0.0.1:8088";
     
     info!("Providing server URL: {}", server_url);
     
@@ -161,7 +222,7 @@ fn process_client_message(message: &str) -> String {
                 "status": "success",
                 "message": "Message processed successfully",
                 "echo": json_message,
-                "server_url": "http://127.0.0.1:8080"
+                "server_url": "http://127.0.0.1:8088"
             }).to_string()
         }
         Err(_) => {
@@ -223,7 +284,7 @@ pub extern "C" fn Java_com_main_MainActivity_getServerStatus(
         let status = if SERVER_RUNTIME.is_some() {
             serde_json::json!({
                 "status": "running",
-                "url": "http://127.0.0.1:8080",
+                "url": "http://127.0.0.1:8088",
                 "environment": "android",
                 "ssl_enabled": false
             })
@@ -241,5 +302,41 @@ pub extern "C" fn Java_com_main_MainActivity_getServerStatus(
             .expect("Couldn't create java string!");
         
         output.into_raw()
+    }
+}
+
+/// Test if server is actually listening on the expected port
+fn test_server_connectivity(host: &str, port: u16) -> bool {
+    match TcpStream::connect((host, port)) {
+        Ok(_) => {
+            info!("Successfully connected to server at {}:{}", host, port);
+            true
+        },
+        Err(e) => {
+            error!("Failed to connect to server at {}:{}: {}", host, port, e);
+            false
+        }
+    }
+}
+
+/// Test server connectivity (for debugging)
+#[no_mangle]
+pub extern "C" fn Java_com_main_MainActivity_testServerConnectivity(
+    env: JNIEnv,
+    _class: JClass,
+) -> jboolean {
+    init_logging();
+    
+    let host = std::env::var("SERVER_HOST").unwrap_or("127.0.0.1".to_string());
+    let port = std::env::var("SERVER_PORT").unwrap_or("8088".to_string()).parse::<u16>().unwrap_or(8088);
+    
+    info!("Testing server connectivity to {}:{}", host, port);
+    
+    if test_server_connectivity(&host, port) {
+        info!("Server connectivity test PASSED");
+        1 // true
+    } else {
+        error!("Server connectivity test FAILED");
+        0 // false
     }
 }
