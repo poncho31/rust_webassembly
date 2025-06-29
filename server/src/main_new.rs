@@ -4,8 +4,6 @@ use std::env;
 mod controllers;
 mod ssl_config;
 mod server_lib;
-mod extract_form;
-mod models;
 
 use server_lib::{start_full_web_server, create_web_server_config};
 use ssl_config::SslConfig;

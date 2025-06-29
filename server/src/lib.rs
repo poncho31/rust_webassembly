@@ -1,70 +1,18 @@
-// Library interface for Android builds
-// This file provides a C-compatible interface for the Rust server
+// Library interface for Android builds and other integrations
+// This file provides both C-compatible interface and Rust library exports
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
-use std::thread;
-use std::time::Duration;
 
-// Re-export existing modules
+// Re-export existing modules for external use
 pub mod extract_form;
 pub mod models;
+pub mod controllers;
+pub mod ssl_config;
 
-// For Android JNI compatibility, we provide a simplified interface
-/// Initialize the Rust server
-/// Returns 0 on success, -1 on error
-#[no_mangle]
-pub extern "C" fn rust_server_init() -> i32 {
-    env_logger::try_init().unwrap_or(());
-    println!("Rust server library initialized");
-    0
-}
+// Module contenant la logique complète du serveur
+pub mod server_lib;
 
-/// Start the server on the specified port
-/// Returns 0 on success, -1 on error
-#[no_mangle]
-pub extern "C" fn rust_server_start(port: u16) -> i32 {
-    println!("Starting Rust server on port {}", port);
-    // For now, just simulate server start
-    // In a full implementation, this would start the actual Actix web server
-    0
-}
-
-/// Stop the server
-/// Returns 0 on success, -1 on error
-#[no_mangle]
-pub extern "C" fn rust_server_stop() -> i32 {
-    println!("Stopping Rust server");
-    0
-}
-
-/// Cleanup resources
-#[no_mangle]
-pub extern "C" fn rust_server_cleanup() {
-    println!("Rust server cleanup complete");
-}
-
-/// Get server status
-/// Returns 1 if running, 0 if stopped
-#[no_mangle]
-pub extern "C" fn rust_server_status() -> i32 {
-    // For now, always return running status
-    1
-}
-
-/// Test function to verify the library is working
-#[no_mangle]
-pub extern "C" fn rust_server_test() -> *const c_char {
-    let response = CString::new("Rust server library is working!").unwrap();
-    response.into_raw()
-}
-
-/// Free a string returned by the library
-#[no_mangle]
-pub extern "C" fn rust_server_free_string(s: *mut c_char) {
-    unsafe {
-        if !s.is_null() {
-            CString::from_raw(s);
-        }
-    }
-}
+// Re-export the main server function and types from server_lib.rs
+// This allows Android to use the existing server code without duplication
+pub use server_lib::{start_full_web_server, WebServerConfig, create_web_server_config};
