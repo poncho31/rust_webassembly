@@ -52,8 +52,8 @@ impl User {
 
 
 impl UserRepository {
-    pub fn new(pool: sqlx::PgPool) -> Self {
-        Self { db: DatabaseQuery::new(pool) }
+    pub fn new(db_query: DatabaseQuery) -> Self {
+        Self { db: db_query }
     }
 
     /// Vérifie si un utilisateur existe déjà par login

@@ -2,8 +2,7 @@
 use actix_web::{web, HttpResponse, Error};
 use actix_multipart::Multipart;
 use futures::StreamExt;
-use core::{HttpSendResponse, UserRepository, Table};
-use sqlx::PgPool;
+use core::{HttpSendResponse, UserRepository, Table, _database::DatabaseQuery};
 use std::collections::HashMap;
 use server_lib::extract_form::{extract_form_field, save_uploaded_file};
 use server_lib::models::form_response::FormResponse;
@@ -13,7 +12,7 @@ use serde_json::{to_value, value, Value};
 /// Processes both file uploads and form fields
 pub async fn post(
     mut payload: Multipart,
-    db_pool: web::Data<PgPool>
+    db_pool: web::Data<DatabaseQuery>
 ) -> Result<HttpResponse, Error> {
     // Store form fields and file information
     let mut form_data = HashMap::new();
@@ -98,7 +97,7 @@ pub async fn post(
 
 /// Récupère toutes les données de la table form_data
 pub async fn get_form_data(
-    db_pool: web::Data<PgPool>
+    db_pool: web::Data<DatabaseQuery>
 ) -> Result<HttpResponse, Error> {
     // Créer le repository pour la base de données
     let user_repo: UserRepository = UserRepository::new(db_pool.get_ref().clone());

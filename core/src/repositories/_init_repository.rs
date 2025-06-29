@@ -10,8 +10,8 @@ pub struct InitRepository {
 }
 
 impl InitRepository {
-    pub fn new(pool: sqlx::PgPool) -> Self {
-        Self { db: DatabaseQuery::new(pool) }
+    pub fn new(db_query: DatabaseQuery) -> Self {
+        Self { db: db_query }
     }
 
     // Méthode pour initialiser un repository à partir d'une structure de table

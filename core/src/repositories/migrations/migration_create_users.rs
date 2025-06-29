@@ -12,7 +12,7 @@ const MIGRATION_NAME : &str = "create_users";
 
 pub async fn run(repo: &DatabaseQuery) -> Result<()> {
     println!("Running migration '{}'...", MIGRATION_NAME);
-    let repo_migration = MigrationRepository::new(repo.get_pool().clone());
+    let repo_migration = MigrationRepository::new(repo.clone());
 
       // Vérifie si la migration existe déjà en base de données
     let migration_result = repo_migration.find_by_name(MIGRATION_NAME).await?;

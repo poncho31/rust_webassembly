@@ -11,7 +11,7 @@ const MIGRATION_NAME : &str = "create_tests";
 
 pub async fn run(repo: &DatabaseQuery) -> Result<()> {
     println!("Running migration '{}'...", MIGRATION_NAME);
-    let repo_migration = MigrationRepository::new(repo.get_pool().clone());
+    let repo_migration = MigrationRepository::new(repo.clone());
 
       // Vérifie si la migration existe déjà en base de données
     let migration_result = repo_migration.find_by_name(MIGRATION_NAME).await?;
@@ -49,7 +49,7 @@ pub async fn migrate(repo: &DatabaseQuery) -> Result<()> {
     repo.create_indexes(TABLE, INDEXES.to_vec()).await?;
 
     // Create Repository
-   let init_repo = InitRepository::new(repo.get_pool().clone());
+   let init_repo = InitRepository::new(repo.clone());
    init_repo.init_repository(TABLE, table_fields).await?;
    
    Ok(())

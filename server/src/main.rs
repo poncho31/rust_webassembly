@@ -5,7 +5,7 @@ use dotenv::dotenv;
 use std::env;
 use actix_cors::Cors;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use sqlx::PgPool;
+use core::_database::DatabaseQuery;
 
 mod controllers;
 mod ssl_config;
