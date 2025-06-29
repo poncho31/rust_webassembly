@@ -1,4 +1,3 @@
-use sqlx::{query, PgPool, Row};
 use anyhow::{Error, Result};
 use uuid::Uuid;
 use time::OffsetDateTime;
@@ -7,12 +6,12 @@ use std::collections::HashMap;
 use std::fs;
 
 pub struct InitRepository {
-    pool: PgPool,
+    db: DatabaseQuery,
 }
 
 impl InitRepository {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { db: DatabaseQuery::new(pool) }
     }
 
     // Méthode pour initialiser un repository à partir d'une structure de table
@@ -95,14 +94,14 @@ impl InitRepository {
         let mut code = String::new();
         
         // En-tête du fichier avec imports
-        code.push_str("use sqlx::{PgPool, Row, FromRow};\n");
         code.push_str("use serde::{Serialize, Deserialize};\n");
         code.push_str("use anyhow::Result;\n");
         code.push_str("use time::OffsetDateTime;\n");
-        code.push_str("use uuid::Uuid;\n\n");
+        code.push_str("use uuid::Uuid;\n");
+        code.push_str("use crate::repositories::_database::DatabaseQuery;\n\n");
         
         // Définir la structure principale
-        code.push_str("#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow)]\n");
+        code.push_str("#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]\n");
         code.push_str(&format!("pub struct {} {{\n", struct_name));
         
         // Ajouter les champs de la structure
@@ -184,10 +183,15 @@ impl InitRepository {
         code.push_str("        }\n");
         code.push_str("    }\n");
         code.push_str("}\n\n");
+        // Ajouter la structure du Repository
+        code.push_str(&format!("pub struct {}Repository {{\n", struct_name));
+        code.push_str("    db: DatabaseQuery,\n");
+        code.push_str("}\n\n");
+        
         // Implémenter le repository
         code.push_str(&format!("impl {}Repository {{\n", struct_name));
-        code.push_str("    pub fn new(pool: PgPool) -> Self {\n");
-        code.push_str("        Self { pool }\n");
+        code.push_str("    pub fn new(pool: sqlx::PgPool) -> Self {\n");
+        code.push_str("        Self { db: DatabaseQuery::new(pool) }\n");
         code.push_str("    }\n\n");
         code.push_str("    /// Crée un nouvel enregistrement\n");
         // Ajouter les noms de colonnes pour l'insertion

@@ -214,6 +214,10 @@ echo ""
 echo "[STEP 6/8] Compiling Rust code for Android..."
 echo "-----------------------------------------------------------------------"
 
+# Configure Android-specific target directory
+ANDROID_TARGET_DIR="../../target_android"
+echo "[INFO] Using Android-specific target directory: $ANDROID_TARGET_DIR"
+
 # Build for all Android architectures
 CARGO_NDK_PATH="$LOCAL_CARGO_HOME/bin/cargo-ndk"
 if [ ! -f "$CARGO_NDK_PATH" ]; then
@@ -225,7 +229,7 @@ fi
 echo "[INFO] Building for multiple architectures..."
 
 echo "    * Building for aarch64-linux-android (ARM64)..."
-cargo ndk -t aarch64-linux-android -p 21 -- build --release
+cargo ndk -t aarch64-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to compile for aarch64-linux-android"
     read -p "Press enter to continue..."
@@ -233,7 +237,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "    * Building for armv7-linux-androideabi (ARM32)..."
-cargo ndk -t armv7-linux-androideabi -p 21 -- build --release
+cargo ndk -t armv7-linux-androideabi -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to compile for armv7-linux-androideabi"
     read -p "Press enter to continue..."
@@ -241,7 +245,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "    * Building for x86_64-linux-android (x64)..."
-cargo ndk -t x86_64-linux-android -p 21 -- build --release
+cargo ndk -t x86_64-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to compile for x86_64-linux-android"
     read -p "Press enter to continue..."
@@ -249,7 +253,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "    * Building for i686-linux-android (x86)..."
-cargo ndk -t i686-linux-android -p 21 -- build --release
+cargo ndk -t i686-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to compile for i686-linux-android"
     read -p "Press enter to continue..."
@@ -272,13 +276,13 @@ mkdir -p "$JNI_LIBS/x86_64"
 mkdir -p "$JNI_LIBS/x86"
 
 echo "    * Copying ARM64 library..."
-cp "../../target/aarch64-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/arm64-v8a/"
+cp "$ANDROID_TARGET_DIR/aarch64-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/arm64-v8a/"
 echo "    * Copying ARM32 library..."
-cp "../../target/armv7-linux-androideabi/release/libwebassembly_android.so" "$JNI_LIBS/armeabi-v7a/"
+cp "$ANDROID_TARGET_DIR/armv7-linux-androideabi/release/libwebassembly_android.so" "$JNI_LIBS/armeabi-v7a/"
 echo "    * Copying x64 library..."
-cp "../../target/x86_64-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/x86_64/"
+cp "$ANDROID_TARGET_DIR/x86_64-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/x86_64/"
 echo "    * Copying x86 library..."
-cp "../../target/i686-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/x86/"
+cp "$ANDROID_TARGET_DIR/i686-linux-android/release/libwebassembly_android.so" "$JNI_LIBS/x86/"
 
 if [ $? -ne 0 ]; then
     echo "[ERROR] Failed to copy native libraries"

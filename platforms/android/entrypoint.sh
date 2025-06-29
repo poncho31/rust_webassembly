@@ -77,18 +77,22 @@ fi
 
 echo "=== BUILD APK ==="
 
+echo "Configuration du target Android spécifique..."
+ANDROID_TARGET_DIR="/workspace/target_android"
+echo "Dossier target Android : $ANDROID_TARGET_DIR"
+
 echo "Construction des bibliothèques natives..."
-cargo ndk -t aarch64-linux-android -p 21 -- build --release
-cargo ndk -t armv7-linux-androideabi -p 21 -- build --release
-cargo ndk -t x86_64-linux-android -p 21 -- build --release
-cargo ndk -t i686-linux-android -p 21 -- build --release
+cargo ndk -t aarch64-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
+cargo ndk -t armv7-linux-androideabi -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
+cargo ndk -t x86_64-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
+cargo ndk -t i686-linux-android -p 21 -- build --release --target-dir "$ANDROID_TARGET_DIR"
 
 echo "Copie des bibliothèques natives..."
 mkdir -p app/src/main/jniLibs/{arm64-v8a,armeabi-v7a,x86_64,x86}
-cp /workspace/target/aarch64-linux-android/release/libwebassembly_android.so app/src/main/jniLibs/arm64-v8a/
-cp /workspace/target/armv7-linux-androideabi/release/libwebassembly_android.so app/src/main/jniLibs/armeabi-v7a/
-cp /workspace/target/x86_64-linux-android/release/libwebassembly_android.so app/src/main/jniLibs/x86_64/
-cp /workspace/target/i686-linux-android/release/libwebassembly_android.so app/src/main/jniLibs/x86/
+cp "$ANDROID_TARGET_DIR/aarch64-linux-android/release/libwebassembly_android.so" app/src/main/jniLibs/arm64-v8a/
+cp "$ANDROID_TARGET_DIR/armv7-linux-androideabi/release/libwebassembly_android.so" app/src/main/jniLibs/armeabi-v7a/
+cp "$ANDROID_TARGET_DIR/x86_64-linux-android/release/libwebassembly_android.so" app/src/main/jniLibs/x86_64/
+cp "$ANDROID_TARGET_DIR/i686-linux-android/release/libwebassembly_android.so" app/src/main/jniLibs/x86/
 
 echo "Copie des ressources web..."
 rm -rf app/src/main/assets/static

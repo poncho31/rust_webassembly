@@ -197,6 +197,10 @@ echo [STEP 6/8] Compiling Rust code for Android...
 echo ---------------------------------------------------------------------------
 cd /d "%~dp0"
 
+REM Configure Android-specific target directory
+set ANDROID_TARGET_DIR=%~dp0..\..\target_android
+echo [INFO] Using Android-specific target directory: %ANDROID_TARGET_DIR%
+
 REM Build for all Android architectures
 set CARGO_NDK_PATH=%LOCAL_CARGO_HOME%\bin\cargo-ndk.exe
 if not exist "%CARGO_NDK_PATH%" (
@@ -208,7 +212,7 @@ if not exist "%CARGO_NDK_PATH%" (
 echo [INFO] Building for multiple architectures...
 
 echo     * Building for aarch64-linux-android (ARM64)...
-cargo ndk -t aarch64-linux-android -p 21 -- build --release
+cargo ndk -t aarch64-linux-android -p 21 -- build --release --target-dir "%ANDROID_TARGET_DIR%"
 if errorlevel 1 (
     echo [ERROR] Failed to compile for aarch64-linux-android
     pause
@@ -216,7 +220,7 @@ if errorlevel 1 (
 )
 
 echo     * Building for armv7-linux-androideabi (ARM32)...
-cargo ndk -t armv7-linux-androideabi -p 21 -- build --release
+cargo ndk -t armv7-linux-androideabi -p 21 -- build --release --target-dir "%ANDROID_TARGET_DIR%"
 if errorlevel 1 (
     echo [ERROR] Failed to compile for armv7-linux-androideabi
     pause
@@ -224,7 +228,7 @@ if errorlevel 1 (
 )
 
 echo     * Building for x86_64-linux-android (x64)...
-cargo ndk -t x86_64-linux-android -p 21 -- build --release
+cargo ndk -t x86_64-linux-android -p 21 -- build --release --target-dir "%ANDROID_TARGET_DIR%"
 if errorlevel 1 (
     echo [ERROR] Failed to compile for x86_64-linux-android
     pause
@@ -232,7 +236,7 @@ if errorlevel 1 (
 )
 
 echo     * Building for i686-linux-android (x86)...
-cargo ndk -t i686-linux-android -p 21 -- build --release
+cargo ndk -t i686-linux-android -p 21 -- build --release --target-dir "%ANDROID_TARGET_DIR%"
 if errorlevel 1 (
     echo [ERROR] Failed to compile for i686-linux-android
     pause
@@ -255,13 +259,13 @@ if not exist "%JNI_LIBS%\x86_64" mkdir "%JNI_LIBS%\x86_64"
 if not exist "%JNI_LIBS%\x86" mkdir "%JNI_LIBS%\x86"
 
 echo     * Copying ARM64 library...
-copy /Y "..\..\target\aarch64-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\arm64-v8a\"
+copy /Y "%ANDROID_TARGET_DIR%\aarch64-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\arm64-v8a\"
 echo     * Copying ARM32 library...
-copy /Y "..\..\target\armv7-linux-androideabi\release\libwebassembly_android.so" "%JNI_LIBS%\armeabi-v7a\"
+copy /Y "%ANDROID_TARGET_DIR%\armv7-linux-androideabi\release\libwebassembly_android.so" "%JNI_LIBS%\armeabi-v7a\"
 echo     * Copying x64 library...
-copy /Y "..\..\target\x86_64-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\x86_64\"
+copy /Y "%ANDROID_TARGET_DIR%\x86_64-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\x86_64\"
 echo     * Copying x86 library...
-copy /Y "..\..\target\i686-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\x86\"
+copy /Y "%ANDROID_TARGET_DIR%\i686-linux-android\release\libwebassembly_android.so" "%JNI_LIBS%\x86\"
 
 if errorlevel 1 (
     echo [ERROR] Failed to copy native libraries
@@ -423,6 +427,12 @@ if exist "app\src\main\assets" (
     echo [INFO] Removing assets...
     rmdir /s /q app\src\main\assets
     echo [OK] Assets removed
+)
+
+if exist "..\..\target_android" (
+    echo [INFO] Removing Android target directory...
+    rmdir /s /q "..\..\target_android"
+    echo [OK] Android target directory removed
 )
 
 if exist ".gradle" (

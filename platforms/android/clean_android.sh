@@ -32,5 +32,14 @@ else
 fi
 
 echo
+echo "Nettoyage du dossier target_android..."
+if [ -d "../../target_android" ]; then
+    rm -rf "../../target_android"
+    echo "✓ Dossier target_android supprimé"
+else
+    echo "⚠ Dossier target_android non trouvé"
+fi
+
+echo
 echo "=== NETTOYAGE TERMINÉ ==="
 echo "Vous pouvez maintenant relancer ./build_android_docker.sh"

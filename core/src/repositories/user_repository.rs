@@ -1,13 +1,13 @@
-use sqlx::{PgPool, Row, FromRow};
+use sqlx::Row;
 use serde::{Serialize, Deserialize};
-use anyhow::{Error, Result};
+use anyhow::Result;
 use time::OffsetDateTime;
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use crate::{repositories::_database::DatabaseQuery};
+use crate::repositories::_database::DatabaseQuery;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, FromRow)]
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct User {
     pub id: Uuid,
     pub login: Option<String>,
@@ -23,7 +23,7 @@ pub struct User {
 }
 
 pub struct UserRepository {
-    pool: PgPool,
+    db: DatabaseQuery,
 }
 
 impl User {
@@ -52,86 +52,81 @@ impl User {
 
 
 impl UserRepository {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { db: DatabaseQuery::new(pool) }
     }
 
     /// Vérifie si un utilisateur existe déjà par login
     pub async fn user_exists(&self, login: &str) -> Result<bool> {
-        let result = sqlx::query(
-            "SELECT COUNT(*) as count FROM users WHERE login = $1"
-        )
-        .bind(login)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let count: i64 = result.get("count");
+        let query = format!("SELECT COUNT(*) as count FROM users WHERE login = '{}'", login);
+        let row = self.db.run_query_fetch_one(&query).await?;
+        let count: i64 = row.get("count");
         Ok(count > 0)
     }
 
     /// Récupère un utilisateur par login
     pub async fn get_user(&self, login: &str) -> Result<Option<User>> {
-        let result = sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE login = $1 ORDER BY created_at DESC LIMIT 1"
-        )
-        .bind(login)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(result)
+        let query = format!("SELECT * FROM users WHERE login = '{}' ORDER BY created_at DESC LIMIT 1", login);
+        match self.db.run_query_fetch_optional(&query).await? {
+            Some(row) => {
+                let user = User {
+                    id: row.get("id"),
+                    login: row.get("login"),
+                    birthday: row.get("birthday"),
+                    firstname: row.get("firstname"),
+                    lastname: row.get("lastname"),
+                    sexe: row.get("sexe"),
+                    age: row.get("age"),
+                    info: row.get("info"),
+                    email: row.get("email"),
+                    files_info: row.get("files_info"),
+                    created_at: row.get("created_at"),
+                };
+                Ok(Some(user))
+            },
+            None => Ok(None)
+        }
     }
 
     /// Crée un nouvel utilisateur
     pub async fn create_user(&self, user: &User) -> Result<User> {
-        let id = Uuid::new_v4();
-        let created_at = OffsetDateTime::now_utc();
+        let query = format!(
+            "INSERT INTO users (id, login, birthday, firstname, lastname, sexe, age, info, email, files_info, created_at) VALUES ('{}', '{}', '{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}')",
+            user.id,
+            user.login.as_ref().unwrap_or(&"".to_string()),
+            user.birthday.as_ref().unwrap_or(&"".to_string()),
+            user.firstname.as_ref().unwrap_or(&"".to_string()),
+            user.lastname.as_ref().unwrap_or(&"".to_string()),
+            user.sexe.as_ref().unwrap_or(&"".to_string()),
+            user.age.unwrap_or(0),
+            user.info.as_ref().unwrap_or(&"".to_string()),
+            user.email.as_ref().unwrap_or(&"".to_string()),
+            user.files_info.as_ref().unwrap_or(&"".to_string()),
+            user.created_at
+        );
 
-        let users = sqlx::query_as::<_, User>(
-            "INSERT INTO users 
-                    (id, login, birthday, firstname, lastname, sexe, age, info, email, files_info, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-             RETURNING *"
-        )
-        .bind(id)
-        .bind(&user.login)
-        .bind(&user.birthday)
-        .bind(&user.firstname)
-        .bind(&user.lastname)
-        .bind(&user.sexe)
-        .bind(&user.age)
-        .bind(&user.info)
-        .bind(&user.email)
-        .bind(&user.files_info)
-        .bind(created_at)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(users)
+        self.db.run_query(&query).await?;
+        Ok(user.clone())
     }
 
     /// Met à jour un utilisateur existant
     pub async fn update_user(&self, login: &str, user: &User) -> Result<User> {
-        let users = sqlx::query_as::<_, User>(
-            "UPDATE users 
-             SET birthday = $2, firstname = $3, lastname = $4, sexe = $5, age = $6, 
-                 info = $7, email = $8, files_info = $9, created_at = $10
-             WHERE login = $1
-             RETURNING *"
-        )
-        .bind(login)
-        .bind(&user.birthday)
-        .bind(&user.firstname)
-        .bind(&user.lastname)
-        .bind(&user.sexe)
-        .bind(&user.age)
-        .bind(&user.info)
-        .bind(&user.email)
-        .bind(&user.files_info)
-        .bind(OffsetDateTime::now_utc())
-        .fetch_one(&self.pool)
-        .await?;
+        let query = format!(
+            "UPDATE users SET birthday = '{}', firstname = '{}', lastname = '{}', sexe = '{}', age = {}, info = '{}', email = '{}', files_info = '{}', created_at = '{}' WHERE login = '{}'",
+            user.birthday.as_ref().unwrap_or(&"".to_string()),
+            user.firstname.as_ref().unwrap_or(&"".to_string()),
+            user.lastname.as_ref().unwrap_or(&"".to_string()),
+            user.sexe.as_ref().unwrap_or(&"".to_string()),
+            user.age.unwrap_or(0),
+            user.info.as_ref().unwrap_or(&"".to_string()),
+            user.email.as_ref().unwrap_or(&"".to_string()),
+            user.files_info.as_ref().unwrap_or(&"".to_string()),
+            OffsetDateTime::now_utc(),
+            login
+        );
 
-        Ok(users)
+        self.db.run_query(&query).await?;
+        Ok(user.clone())
     }
 
     /// Crée ou met à jour un utilisateur (méthode principale)
@@ -141,7 +136,7 @@ impl UserRepository {
         // Vérifier si l'utilisateur a un login
         let login = match &user.login {
             Some(l) if !l.is_empty() => l,
-            _ => return Err(Error::msg("Login is required")),
+            _ => return Err(anyhow::Error::msg("Login is required")),
         };
 
         // Vérifier si l'utilisateur existe déjà
@@ -157,23 +152,13 @@ impl UserRepository {
 
     /// Récupérer toutes les données de formulaire
     pub async fn get_all(&self) -> Result<Vec<User>> {
-        let query = r#"
-            SELECT id, login, birthday, firstname, lastname, sexe, age, info, email, 
-                   files_info, created_at
-            FROM users 
-            ORDER BY created_at DESC
-        "#;
+        let query = "SELECT id, login, birthday, firstname, lastname, sexe, age, info, email, files_info, created_at FROM users ORDER BY created_at DESC";
 
-        let rows = sqlx::query(query)
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| Error::msg(format!("Failed to fetch form data: {}", e)))?;        
+        let rows = self.db.run_query_fetch_all(query).await?;
         
         let mut users_list = Vec::new();
         for row in rows {
-            let files_info: Option<String> = row.get("files_info");
-
-            let users = User {
+            let user = User {
                 id: row.get("id"),
                 login: row.get("login"),
                 birthday: row.get("birthday"),
@@ -183,10 +168,10 @@ impl UserRepository {
                 age: row.get("age"),
                 info: row.get("info"),
                 email: row.get("email"),
-                files_info,
+                files_info: row.get("files_info"),
                 created_at: row.get("created_at"),
             };
-            users_list.push(users);
+            users_list.push(user);
         }
 
         Ok(users_list)
@@ -194,14 +179,10 @@ impl UserRepository {
 
     /// Supprimer une donnée de formulaire par ID
     pub async fn delete_user(&self, id: Uuid) -> Result<bool> {
-        let query = "DELETE FROM users WHERE id = $1";
-
-        let result = sqlx::query(query)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| Error::msg(format!("Failed to delete form data: {}", e)))?;
-
-        Ok(result.rows_affected() > 0)
+        let query = format!("DELETE FROM users WHERE id = '{}'", id);
+        match self.db.run_query(&query).await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false)
+        }
     }
 }

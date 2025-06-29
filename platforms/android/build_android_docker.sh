@@ -129,6 +129,7 @@ adb devices
 
 echo "[INFO] Lancement du conteneur Docker avec détection automatique..."
 echo "Mode : Détection automatique (USB direct sur Linux, TCP en fallback)"
+echo "Utilisation du target_android pour la compilation Android..."
 echo
 
 # Exporter les variables pour docker-compose

@@ -1,5 +1,6 @@
 # Rust
 /target/
+/target_android/ 
 **/target/
 Cargo.lock
 *.rs.bk

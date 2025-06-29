@@ -1,4 +1,4 @@
-use sqlx::{query, PgPool, Row};
+use sqlx::{query, PgPool, Row, FromRow, Executor};
 use anyhow::{Error, Result};
 use uuid::Uuid;
 use time::OffsetDateTime;
@@ -34,6 +34,39 @@ impl DatabaseQuery {
 
         println!("\x1b[32mQuery executed successfully: {}\x1b[0m", query);
         Ok(())
+    }
+    
+    /// Exécute une requête et retourne une ligne
+    pub async fn run_query_fetch_one(&self, query: &str) -> Result<sqlx::postgres::PgRow> {
+        let result = sqlx::query(query)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("\x1b[31mFailed query_fetch_one: {}\x1b[0m", e)))?;
+
+        println!("\x1b[32mQuery fetch_one executed successfully: {}\x1b[0m", query);
+        Ok(result)
+    }
+    
+    /// Exécute une requête et retourne une ligne optionnelle
+    pub async fn run_query_fetch_optional(&self, query: &str) -> Result<Option<sqlx::postgres::PgRow>> {
+        let result = sqlx::query(query)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("\x1b[31mFailed query_fetch_optional: {}\x1b[0m", e)))?;
+
+        println!("\x1b[32mQuery fetch_optional executed successfully: {}\x1b[0m", query);
+        Ok(result)
+    }
+    
+    /// Exécute une requête et retourne toutes les lignes
+    pub async fn run_query_fetch_all(&self, query: &str) -> Result<Vec<sqlx::postgres::PgRow>> {
+        let result = sqlx::query(query)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| Error::msg(format!("\x1b[31mFailed query_fetch_all: {}\x1b[0m", e)))?;
+
+        println!("\x1b[32mQuery fetch_all executed successfully: {}\x1b[0m", query);
+        Ok(result)
     }
     
     /// Exécute une requête de création de table
