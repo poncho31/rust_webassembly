@@ -3,6 +3,11 @@ name = "server"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["sqlite"]
+sqlite = ["core/sqlite"]
+postgres = ["core/postgres"]
+
 # Library target for Android builds
 [lib]
 name = "server_lib"

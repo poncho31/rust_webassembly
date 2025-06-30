@@ -329,6 +329,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Check if WebAssembly pkg directory exists and copy it
+set WASM_PKG_SOURCE=%~dp0..\..\client\static\pkg
+if exist "%WASM_PKG_SOURCE%" (
+    echo [INFO] Copying WebAssembly pkg files...
+    xcopy /E /I /Y "%WASM_PKG_SOURCE%\*" "%ASSETS_PKG_DIR%\"
+    if errorlevel 1 (
+        echo [WARNING] Failed to copy WebAssembly pkg files
+    ) else (
+        echo [OK] WebAssembly pkg files copied
+        echo [INFO] WebAssembly files in pkg:
+        dir /b "%ASSETS_PKG_DIR%"
+    )
+) else (
+    echo [INFO] No WebAssembly pkg directory found - may need to build WebAssembly first
+)
+
 echo [OK] Static files copied successfully
 echo [INFO] Files copied to assets/static:
 dir /b "%ASSETS_STATIC_DIR%"
