@@ -30,8 +30,8 @@ struct Config {
 
 // Default configuration (fallback)
 void loadDefaultConfig() {
-  config.wifi_ssid = "TADAAM-BE93TA";
-  config.wifi_password = "97EG82R3D357";
+  config.wifi_ssid = "test";
+  config.wifi_password = "test";
   config.device_name = "ESP8266-Complete";
   config.device_version = "1.0.0";
   config.server_port = 80;
