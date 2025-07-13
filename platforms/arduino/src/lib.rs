@@ -10,9 +10,17 @@
 
 pub mod utils;
 pub mod esp8266_detector;
+pub mod spiffs_manager;
+pub mod esp8266_web_tester;
+pub mod arduino_deployment_manager;
+pub mod config_uploader;
 
 pub use utils::{ArduinoSketch, BoardInfo, check_arduino_cli, create_example_sketch};
 pub use esp8266_detector::{ESP8266Detector, ESP8266Info};
+pub use spiffs_manager::SpiffsManager;
+pub use esp8266_web_tester::{ESP8266WebTester, ESP8266TestResult};
+pub use arduino_deployment_manager::{ArduinoDeploymentManager, DeploymentConfig};
+pub use config_uploader::ConfigUploader;
 
 use anyhow::Result;
 use log::{info, error};
@@ -42,7 +50,40 @@ impl ArduinoDeployer {
     
     /// Get Arduino CLI command
     fn get_arduino_cli_cmd(&self) -> String {
-        self.arduino_cli_path.clone().unwrap_or_else(|| "arduino-cli".to_string())
+        if let Some(path) = &self.arduino_cli_path {
+            return path.clone();
+        }
+        
+        // Try to find local arduino-cli first
+        let local_paths = if cfg!(windows) {
+            vec![
+                "cli\\arduino-cli.exe",
+                ".\\cli\\arduino-cli.exe",
+                "platforms\\arduino\\cli\\arduino-cli.exe",
+            ]
+        } else {
+            vec![
+                "cli/arduino-cli",
+                "./cli/arduino-cli",
+                "platforms/arduino/cli/arduino-cli",
+            ]
+        };
+        
+        for path in local_paths {
+            if std::path::Path::new(path).exists() {
+                if self.verbose {
+                    println!("🔍 Found local arduino-cli at: {}", path);
+                }
+                return path.to_string();
+            }
+        }
+        
+        // Fall back to system-wide arduino-cli
+        if cfg!(windows) {
+            "arduino-cli.exe".to_string()
+        } else {
+            "arduino-cli".to_string()
+        }
     }
     
     /// Auto-install ESP8266 support if needed

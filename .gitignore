@@ -100,3 +100,4 @@ platforms/android/app/src/main/assets/www/
 #arduino 
 platforms/arduino/target/
 platforms/arduino/cli/
+wifi_config.json

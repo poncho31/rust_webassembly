@@ -1,8 +1,7 @@
 use anyhow::Result;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::process::Command;
 use std::time::Duration;
-use std::thread;
 use serde_json::Value;
 
 /// ESP8266 Network Detector and Web Server Inspector

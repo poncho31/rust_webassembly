@@ -53,7 +53,7 @@ If you prefer command line:
 ./target/release/arduino-deploy list
 
 # Deploy a sketch
-./target/release/arduino-deploy deploy --sketch examples/blink.ino --port COM3 --board uno
+./target/release/arduino-deploy deploy --sketch static/blink.ino --port COM3 --board uno
 
 # Monitor serial output
 ./target/release/arduino-deploy monitor --port COM3 --baud 9600

@@ -14,7 +14,7 @@ default_baud = 9600
 default_port = "COM3"
 
 # Default sketch directory
-sketch_directory = "examples"
+sketch_directory = "static"
 
 # Verbose output by default
 verbose = true

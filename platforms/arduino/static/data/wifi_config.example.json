@@ -1,0 +1,23 @@
+{
+  "wifi": {
+    "ssid": "Mon_WiFi_2.4GHz",
+    "password": "MonMotDePasse123"
+  },
+  "device": {
+    "name": "ESP8266-Salon",
+    "version": "1.0.0",
+    "port": 80
+  },
+  "sensors": {
+    "interval": 3000,
+    "auto_relay": true
+  },
+  "pins": {
+    "led": "LED_BUILTIN",
+    "relay": 12,
+    "button": 0,
+    "sensor": 14,
+    "pwm": 13,
+    "analog": "A0"
+  }
+}
