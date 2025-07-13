@@ -4,7 +4,8 @@ members = [
     "server",
     "client",
     "core",
-    "platforms/android"
+    "platforms/android",
+    "platforms/arduino"
 ]
 
 [workspace.dependencies]

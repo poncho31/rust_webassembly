@@ -95,3 +95,8 @@ platforms/android/*.aab
 platforms/android/*.dex
 platforms/android/*.class
 platforms/android/app/src/main/assets/www/
+
+
+#arduino 
+platforms/arduino/target/
+platforms/arduino/cli/

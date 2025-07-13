@@ -1,0 +1,34 @@
+# Arduino Deployer Configuration
+# This file contains default settings for the Arduino deployer
+
+# Default Arduino board type
+default_board = "uno"
+
+# Default baud rate for serial monitoring
+default_baud = 9600
+
+# Default serial port (can be overridden via command line)
+# Windows: "COM3", "COM4", etc.
+# Linux: "/dev/ttyUSB0", "/dev/ttyACM0", etc.
+# macOS: "/dev/cu.usbserial-*", "/dev/cu.usbmodem-*", etc.
+default_port = "COM3"
+
+# Default sketch directory
+sketch_directory = "examples"
+
+# Verbose output by default
+verbose = true
+
+# Arduino CLI path (leave empty to use system PATH)
+arduino_cli_path = ""
+
+# Common Arduino board configurations
+[boards]
+uno = { fqbn = "arduino:avr:uno", description = "Arduino Uno R3 (ATmega328P)" }
+nano = { fqbn = "arduino:avr:nano", description = "Arduino Nano (ATmega328P)" }
+mega = { fqbn = "arduino:avr:mega", description = "Arduino Mega 2560 (ATmega2560)" }
+leonardo = { fqbn = "arduino:avr:leonardo", description = "Arduino Leonardo (ATmega32u4)" }
+
+# Common baud rates for serial monitoring
+[baud_rates]
+common = [9600, 19200, 38400, 57600, 115200]
