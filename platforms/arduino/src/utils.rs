@@ -89,6 +89,33 @@ impl BoardInfo {
                 fqbn: "arduino:avr:leonardo".to_string(),
                 description: "Arduino Leonardo (ATmega32u4)".to_string(),
             },
+            // ESP8266 boards
+            "esp8266:esp8266:nodemcuv2" => BoardInfo {
+                name: "NodeMCU 1.0 (ESP-12E Module)".to_string(),
+                fqbn: "esp8266:esp8266:nodemcuv2".to_string(),
+                description: "NodeMCU 1.0 (ESP-12E Module)".to_string(),
+            },
+            "esp8266:esp8266:nodemcu" => BoardInfo {
+                name: "NodeMCU 0.9 (ESP-12 Module)".to_string(),
+                fqbn: "esp8266:esp8266:nodemcu".to_string(),
+                description: "NodeMCU 0.9 (ESP-12 Module)".to_string(),
+            },
+            "esp8266:esp8266:generic" => BoardInfo {
+                name: "Generic ESP8266 Module".to_string(),
+                fqbn: "esp8266:esp8266:generic".to_string(),
+                description: "Generic ESP8266 Module".to_string(),
+            },
+            "esp8266:esp8266:d1_mini" => BoardInfo {
+                name: "LOLIN(WEMOS) D1 R2 & mini".to_string(),
+                fqbn: "esp8266:esp8266:d1_mini".to_string(),
+                description: "LOLIN(WEMOS) D1 R2 & mini".to_string(),
+            },
+            // If it's a full FQBN, use it directly
+            board_fqbn if board_fqbn.contains(':') => BoardInfo {
+                name: board_fqbn.split(':').last().unwrap_or("Unknown").to_string(),
+                fqbn: board_fqbn.to_string(),
+                description: format!("Board: {}", board_fqbn),
+            },
             _ => BoardInfo {
                 name: "Arduino Uno (default)".to_string(),
                 fqbn: "arduino:avr:uno".to_string(),
