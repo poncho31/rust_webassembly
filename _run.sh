@@ -31,6 +31,21 @@ elif [[ "$1" == "android" ]]; then
     cd ../..
   fi
 
+elif [[ "$1" == "arduino" ]]; then
+  if [[ "$2" == "esp32" ]]; then
+    echo "[INFO] Déploiement Arduino ESP32..."
+    echo "[WARN] Support ESP32 en cours de développement"
+    cd platforms/arduino
+    # TODO: Ajouter support ESP32
+    cargo run --release -- complete
+    cd ../..
+  else
+    echo "[INFO] Déploiement Arduino ESP8266..."
+    cd platforms/arduino
+    cargo run --release -- complete
+    cd ../..
+  fi
+
 else
   # Vérifie la présence de cargo et installe Rust si manquant
   if ! command -v cargo &> /dev/null; then
