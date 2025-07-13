@@ -73,7 +73,7 @@
         
         .last-update {
             font-size: 0.875rem;
-            color: #6c757d;
+            color: #f8f9fa;
         }
         
         pre {
@@ -346,10 +346,27 @@
             };
         }
 
+        // Get token from URL parameters
+        function getTokenFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('token');
+        }
+
+        // Add token to URL if available
+        function addTokenToUrl(url) {
+            const token = getTokenFromUrl();
+            if (token) {
+                const separator = url.includes('?') ? '&' : '?';
+                return url + separator + 'token=' + encodeURIComponent(token);
+            }
+            return url;
+        }
+
         // API calls
         async function fetchAPI(endpoint) {
             try {
-                const response = await fetch(endpoint);
+                const urlWithToken = addTokenToUrl(endpoint);
+                const response = await fetch(urlWithToken);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return await response.json();
             } catch (error) {
@@ -403,7 +420,8 @@
         // Device control
         async function toggleDevice(device) {
             try {
-                const response = await fetch(`/${device}/toggle`, { method: 'GET' });
+                const urlWithToken = addTokenToUrl(`/${device}/toggle`);
+                const response = await fetch(urlWithToken, { method: 'GET' });
                 if (response.ok) {
                     console.log(`${device} toggled successfully`);
                     setTimeout(updateData, 500); // Update after a short delay
@@ -422,7 +440,8 @@
             apiModal.show();
             
             try {
-                const response = await fetch(endpoint);
+                const urlWithToken = addTokenToUrl(endpoint);
+                const response = await fetch(urlWithToken);
                 const data = await response.json();
                 document.getElementById('apiModalContent').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
@@ -433,7 +452,8 @@
         async function resetDevice() {
             if (confirm('Are you sure you want to reset the device?')) {
                 try {
-                    await fetch('/api/reset', { method: 'POST' });
+                    const urlWithToken = addTokenToUrl('/api/reset');
+                    await fetch(urlWithToken, { method: 'POST' });
                     alert('Device reset command sent. The device will restart in a few seconds.');
                 } catch (error) {
                     alert('Error sending reset command: ' + error.message);

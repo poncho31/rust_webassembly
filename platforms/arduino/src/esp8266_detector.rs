@@ -3,6 +3,8 @@ use std::net::Ipv4Addr;
 use std::process::Command;
 use std::time::Duration;
 use serde_json::Value;
+use std::fs;
+use std::path::Path;
 
 /// ESP8266 Network Detector and Web Server Inspector
 pub struct ESP8266Detector {
@@ -12,6 +14,41 @@ pub struct ESP8266Detector {
 impl ESP8266Detector {
     pub fn new(verbose: bool) -> Self {
         ESP8266Detector { verbose }
+    }
+
+    /// Read access token from configuration file
+    fn read_access_token(&self) -> Option<String> {
+        let config_paths = vec![
+            "static/data/wifi_config.json",
+            "data/wifi_config.json", 
+            "wifi_config.json",
+        ];
+        
+        for path in config_paths {
+            if Path::new(path).exists() {
+                if let Ok(content) = fs::read_to_string(path) {
+                    if let Ok(config) = serde_json::from_str::<Value>(&content) {
+                        if let Some(security) = config.get("security") {
+                            if let Some(token) = security.get("access_token") {
+                                if let Some(token_str) = token.as_str() {
+                                    if !token_str.is_empty() && token_str != "YOUR_SECRET_TOKEN_HERE" {
+                                        if self.verbose {
+                                            println!("🔑 Using access token from configuration");
+                                        }
+                                        return Some(token_str.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if self.verbose {
+            println!("⚠️  No valid access token found in configuration");
+        }
+        None
     }
     
     /// Scan the local network for ESP8266 devices
@@ -108,7 +145,15 @@ impl ESP8266Detector {
         };
         
         // Try to get status from API
-        match self.get_json_from_url(&format!("http://{}/api/status", ip)) {
+        let token = self.read_access_token();
+        let api_url = if let Some(access_token) = token {
+            let encoded_token = urlencoding::encode(&access_token);
+            format!("http://{}/api/status?token={}", ip, encoded_token)
+        } else {
+            format!("http://{}/api/status", ip)
+        };
+        
+        match self.get_json_from_url(&api_url) {
             Ok(status_json) => {
                 if let Ok(status) = serde_json::from_str::<Value>(&status_json) {
                     info.status = "Connected".to_string();
@@ -237,10 +282,22 @@ impl ESP8266Detector {
         
         Ok(serde_json::from_str(&response)?)
     }
-    
-    /// Open web interface in browser
+      /// Open web interface in browser
     pub fn open_web_interface(&self, ip: &str) -> Result<()> {
-        let url = format!("http://{}", ip);
+        // Read access token from configuration
+        let token = self.read_access_token();
+        
+        let url = if let Some(access_token) = token {
+            // URL encode the token for safe transmission
+            let encoded_token = urlencoding::encode(&access_token);
+            format!("http://{}/?token={}", ip, encoded_token)
+        } else {
+            format!("http://{}", ip)
+        };
+        
+        if self.verbose {
+            println!("🌐 Opening web interface: {}", url);
+        }
         
         // Try to open in default browser
         #[cfg(windows)]
@@ -250,15 +307,22 @@ impl ESP8266Detector {
                 .spawn()?;
         }
         
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        {
+            Command::new("open")
+                .arg(&url)
+                .spawn()?;
+        }
+        
+        #[cfg(target_os = "linux")]
         {
             Command::new("xdg-open")
                 .arg(&url)
                 .spawn()?;
         }
-        
+
         if self.verbose {
-            println!("🌐 Opening web interface: {}", url);
+            println!("🌐 Opening web interface at {}", url);
         }
         
         Ok(())

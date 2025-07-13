@@ -16,6 +16,7 @@ hex = "0.4"
 ureq = "2.9"
 regex = "1.0"
 tempfile = "3.0"
+urlencoding = "2.1"
 
 [[bin]]
 name = "arduino-deploy"

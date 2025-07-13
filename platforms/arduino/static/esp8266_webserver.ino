@@ -26,6 +26,8 @@ struct Config {
   int sensor_pin;
   int pwm_pin;
   int analog_pin;
+  String access_token;
+  bool require_token;
 } config;
 
 // Default configuration (fallback)
@@ -43,6 +45,8 @@ void loadDefaultConfig() {
   config.sensor_pin = 14;
   config.pwm_pin = 13;
   config.analog_pin = A0;
+  config.access_token = "test";
+  config.require_token = true;
 }
 
 // Load configuration from SPIFFS
@@ -125,6 +129,10 @@ void createDefaultConfigFile() {
     "sensor": 14,
     "pwm": 13,
     "analog": "A0"
+  },
+  "security": {
+    "require_token": true,
+    "access_token": "YOUR_SECRET_TOKEN_HERE"
   }
 })";
   
@@ -134,6 +142,7 @@ void createDefaultConfigFile() {
     configFile.close();
     Serial.println("✅ Default configuration file created");
     Serial.println("📝 Edit /wifi_config.json with your WiFi credentials");
+    Serial.println("🔒 IMPORTANT: Change the access_token for security!");
   } else {
     Serial.println("❌ Failed to create configuration file");
   }
@@ -189,6 +198,72 @@ bool parseConfig(String json) {
     config.relay_pin = json.substring(relayStart, relayEnd).toInt();
   }
   
+  // Extract LED pin - handle both numeric and "LED_BUILTIN" string
+  int ledStart = json.indexOf("\"led\":") + 6;
+  int ledEnd = -1;
+  if (ledStart > 5) {
+    if (json.charAt(ledStart) == '"') {
+      // String value like "LED_BUILTIN"
+      ledStart++; // Skip opening quote
+      ledEnd = json.indexOf("\"", ledStart);
+      if (ledEnd > ledStart) {
+        String ledValue = json.substring(ledStart, ledEnd);
+        if (ledValue == "LED_BUILTIN") {
+          config.led_pin = LED_BUILTIN;
+        } else {
+          config.led_pin = ledValue.toInt();
+        }
+      }
+    } else {
+      // Numeric value
+      ledEnd = json.indexOf(",", ledStart);
+      if (ledEnd == -1) ledEnd = json.indexOf("}", ledStart);
+      if (ledEnd > ledStart) {
+        config.led_pin = json.substring(ledStart, ledEnd).toInt();
+      }
+    }
+  }
+  
+  // Extract button pin
+  int buttonStart = json.indexOf("\"button\":") + 9;
+  int buttonEnd = json.indexOf(",", buttonStart);
+  if (buttonEnd == -1) buttonEnd = json.indexOf("}", buttonStart);
+  if (buttonStart > 8 && buttonEnd > buttonStart) {
+    config.button_pin = json.substring(buttonStart, buttonEnd).toInt();
+  }
+  
+  // Extract sensor pin
+  int sensorStart = json.indexOf("\"sensor\":") + 9;
+  int sensorEnd = json.indexOf(",", sensorStart);
+  if (sensorEnd == -1) sensorEnd = json.indexOf("}", sensorStart);
+  if (sensorStart > 8 && sensorEnd > sensorStart) {
+    config.sensor_pin = json.substring(sensorStart, sensorEnd).toInt();
+  }
+  
+  // Extract PWM pin
+  int pwmStart = json.indexOf("\"pwm\":") + 6;
+  int pwmEnd = json.indexOf(",", pwmStart);
+  if (pwmEnd == -1) pwmEnd = json.indexOf("}", pwmStart);
+  if (pwmStart > 5 && pwmEnd > pwmStart) {
+    config.pwm_pin = json.substring(pwmStart, pwmEnd).toInt();
+  }
+  
+  // Extract security configuration
+  int tokenStart = json.indexOf("\"access_token\":\"") + 16;
+  int tokenEnd = json.indexOf("\"", tokenStart);
+  if (tokenStart > 15 && tokenEnd > tokenStart) {
+    config.access_token = json.substring(tokenStart, tokenEnd);
+  }
+  
+  int requireTokenStart = json.indexOf("\"require_token\":") + 16;
+  int requireTokenEnd = json.indexOf(",", requireTokenStart);
+  if (requireTokenEnd == -1) requireTokenEnd = json.indexOf("}", requireTokenStart);
+  if (requireTokenStart > 15 && requireTokenEnd > requireTokenStart) {
+    String requireTokenStr = json.substring(requireTokenStart, requireTokenEnd);
+    requireTokenStr.trim();
+    config.require_token = (requireTokenStr == "true");
+  }
+  
   // Check if WiFi credentials are properly configured
   if (config.wifi_ssid.length() == 0 || config.wifi_password.length() == 0) {
     Serial.println("⚠️  WiFi credentials are empty in wifi_config.json");
@@ -196,15 +271,135 @@ bool parseConfig(String json) {
     return false;
   }
   
+  // Check token configuration
+  if (config.require_token && (config.access_token.length() == 0 || config.access_token == "YOUR_SECRET_TOKEN_HERE")) {
+    Serial.println("⚠️  Security token not configured properly!");
+    Serial.println("   Please set a secure access_token in wifi_config.json");
+    config.require_token = false; // Disable security if token is not set
+  }
+  
   // Allow any SSID/password - don't check for placeholder values
   Serial.println("✅ WiFi credentials loaded from config file");
   Serial.print("   SSID: ");
   Serial.println(config.wifi_ssid);
+  Serial.print("🔒 Security: ");
+  Serial.println(config.require_token ? "Token required" : "Open access");
   
   return true;
 }
 
-// Device configuration (will be loaded from config)
+// Generate a simple HTML login form
+String generateLoginForm() {
+  String html = R"(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP8266 Server - Authentication Required</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 20px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="password"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        .btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .btn:hover { background: #0056b3; }
+        .error { color: #dc3545; margin-top: 10px; text-align: center; }
+        .info { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 14px; }
+        .security-info { background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 12px; border-left: 4px solid #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Access Token Required</h1>
+        <div class="info">
+            <strong>Security Notice:</strong> This ESP8266 server requires an access token for authentication.
+            Enter your token below to access the web interface.
+        </div>
+        <div class="security-info">
+            <strong>💡 Usage Tips:</strong><br>
+            • Save the token in your browser for future use<br>
+            • You can also add ?token=YOUR_TOKEN to any URL<br>
+            • Use Authorization: Bearer YOUR_TOKEN header for API calls
+        </div>
+        <form method="get" action="/">
+            <div class="form-group">
+                <label for="token">Access Token:</label>
+                <input type="password" id="token" name="token" placeholder="Enter your access token" required>
+            </div>
+            <button type="submit" class="btn">🔐 Access Server</button>
+        </form>
+        <div class="error" id="error-message"></div>
+    </div>
+    <script>
+        // Check if there's an error parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === 'invalid_token') {
+            document.getElementById('error-message').textContent = 'Invalid token. Please try again.';
+        }
+    </script>
+</body>
+</html>
+  )";
+  return html;
+}
+
+// Generate a simple token based on device info (for demonstration)
+String generateSimpleToken() {
+  String baseString = String(ESP.getChipId(), HEX) + "_" + String(millis()) + "_esp8266";
+  // Simple hash-like transformation
+  unsigned long hash = 0;
+  for (int i = 0; i < baseString.length(); i++) {
+    hash = hash * 31 + baseString.charAt(i);
+  }
+  return String(hash, HEX);
+}
+
+// Update configuration with new token
+void updateToken(String newToken) {
+  config.access_token = newToken;
+  
+  // Update the configuration file
+  String updatedConfig = R"({
+  "wifi": {
+    "ssid": ")" + config.wifi_ssid + R"(",
+    "password": ")" + config.wifi_password + R"("
+  },
+  "device": {
+    "name": ")" + config.device_name + R"(",
+    "version": ")" + config.device_version + R"(",
+    "port": )" + String(config.server_port) + R"(
+  },
+  "sensors": {
+    "interval": )" + String(config.sensor_interval) + R"(,
+    "auto_relay": )" + String(config.auto_relay ? "true" : "false") + R"(
+  },
+  "pins": {
+    "led": )" + String(config.led_pin) + R"(,
+    "relay": )" + String(config.relay_pin) + R"(,
+    "button": )" + String(config.button_pin) + R"(,
+    "sensor": )" + String(config.sensor_pin) + R"(,
+    "pwm": )" + String(config.pwm_pin) + R"(,
+    "analog": )" + String(config.analog_pin) + R"(
+  },
+  "security": {
+    "require_token": )" + String(config.require_token ? "true" : "false") + R"(,
+    "access_token": ")" + newToken + R"("
+  }
+})";
+  
+  File configFile = SPIFFS.open("/wifi_config.json", "w");
+  if (configFile) {
+    configFile.print(updatedConfig);
+    configFile.close();
+    Serial.println("✅ Configuration updated with new token");
+  } else {
+    Serial.println("❌ Failed to update configuration file");
+  }
+}
+
+// ==================== DEVICE CONFIGURATION ====================
 const char* deviceName = "ESP8266-Complete";  // Will be updated from config
 const char* deviceVersion = "1.0.0";          // Will be updated from config
 
@@ -247,6 +442,68 @@ struct Settings {
   char signature[8]; // To validate EEPROM data
 } settings;
 
+// ==================== FORWARD DECLARATIONS ====================
+String createJsonResponse(String status, String message = "");
+String createStatusJson();
+String createControlJson();
+
+// ==================== SECURITY FUNCTIONS ====================
+// Check if access token is valid
+bool isTokenValid(String token) {
+  if (!config.require_token) {
+    return true; // Security disabled
+  }
+  
+  if (token.length() == 0 || config.access_token.length() == 0) {
+    return false;
+  }
+  
+  return token.equals(config.access_token);
+}
+
+// Check authentication from request
+bool isAuthenticated() {
+  if (!config.require_token) {
+    return true; // Security disabled
+  }
+  
+  // Check for token in URL parameter
+  if (server.hasArg("token")) {
+    String token = server.arg("token");
+    if (isTokenValid(token)) {
+      return true;
+    }
+  }
+  
+  // Check for token in Authorization header
+  if (server.hasHeader("Authorization")) {
+    String authHeader = server.header("Authorization");
+    if (authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7);
+      if (isTokenValid(token)) {
+        return true;
+      }
+    }
+  }
+  
+  // Check for token in X-Token header
+  if (server.hasHeader("X-Token")) {
+    String token = server.header("X-Token");
+    if (isTokenValid(token)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Send unauthorized response
+void sendUnauthorized() {
+  String response = createJsonResponse("error", "Unauthorized access. Token required.");
+  server.send(401, "application/json", response);
+  Serial.println("🔒 Unauthorized access attempt from " + server.client().remoteIP().toString());
+}
+
 // ==================== SETUP ====================
 void setup() {
   Serial.begin(115200);
@@ -262,6 +519,17 @@ void setup() {
   } else {
     Serial.println("⚠️  Using default configuration");
   }
+  
+  // Security status
+  Serial.println("🔒 Security Configuration:");
+  Serial.print("   Token Required: ");
+  Serial.println(config.require_token ? "Yes" : "No");
+  if (config.require_token) {
+    Serial.print("   Token Length: ");
+    Serial.println(config.access_token.length());
+    Serial.println("   ⚠️  Remember to change the default token!");
+  }
+  Serial.println("==============================================");
   
   // Update global variables from config
   deviceName = config.device_name.c_str();
@@ -641,7 +909,7 @@ String getSignalQuality(int rssi) {
 }
 
 // ==================== JSON HELPERS (Manual) ====================
-String createJsonResponse(String status, String message = "") {
+String createJsonResponse(String status, String message) {
   String json = "{";
   json += "\"status\":\"" + status + "\"";
   if (message.length() > 0) {
@@ -660,6 +928,7 @@ String createStatusJson() {
   json += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
   json += "\"chip_id\":" + String(ESP.getChipId()) + ",";
   json += "\"flash_size\":" + String(ESP.getFlashChipSize()) + ",";
+  json += "\"security_enabled\":" + String(config.require_token ? "true" : "false") + ",";
   json += "\"led_state\":" + String(ledState ? "true" : "false") + ",";
   json += "\"relay_state\":" + String(relayState ? "true" : "false") + ",";
   json += "\"button_state\":" + String(buttonState ? "true" : "false") + ",";
@@ -700,15 +969,35 @@ void setupWebServer() {
   server.on("/api/system", HTTP_GET, handleApiSystem);
   server.on("/api/wifi", HTTP_GET, handleApiWifi);
   server.on("/api/reset", HTTP_POST, handleApiReset);
+  server.on("/api/token/generate", HTTP_GET, handleApiGenerateToken);
+  server.on("/api/security/status", HTTP_GET, handleApiSecurityStatus);
   
   // Simple control endpoints
-  server.on("/led/on", HTTP_GET, []() { setLED(true); server.send(200, "text/plain", "LED ON"); });
-  server.on("/led/off", HTTP_GET, []() { setLED(false); server.send(200, "text/plain", "LED OFF"); });
-  server.on("/led/toggle", HTTP_GET, []() { toggleLED(); server.send(200, "text/plain", "LED toggled"); });
+  server.on("/led/on", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    setLED(true); server.send(200, "text/plain", "LED ON"); 
+  });
+  server.on("/led/off", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    setLED(false); server.send(200, "text/plain", "LED OFF"); 
+  });
+  server.on("/led/toggle", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    toggleLED(); server.send(200, "text/plain", "LED toggled"); 
+  });
   
-  server.on("/relay/on", HTTP_GET, []() { setRelay(true); server.send(200, "text/plain", "Relay ON"); });
-  server.on("/relay/off", HTTP_GET, []() { setRelay(false); server.send(200, "text/plain", "Relay OFF"); });
-  server.on("/relay/toggle", HTTP_GET, []() { toggleRelay(); server.send(200, "text/plain", "Relay toggled"); });
+  server.on("/relay/on", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    setRelay(true); server.send(200, "text/plain", "Relay ON"); 
+  });
+  server.on("/relay/off", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    setRelay(false); server.send(200, "text/plain", "Relay OFF"); 
+  });
+  server.on("/relay/toggle", HTTP_GET, []() { 
+    if (!isAuthenticated()) { sendUnauthorized(); return; }
+    toggleRelay(); server.send(200, "text/plain", "Relay toggled"); 
+  });
   
   // 404 handler
   server.onNotFound(handle404);
@@ -721,6 +1010,21 @@ void setupWebServer() {
 // ==================== WEB HANDLERS ====================
 void handleRoot() {
   Serial.println("🌐 Root page requested");
+  
+  // Check authentication
+  if (!isAuthenticated()) {
+    // Check if token parameter was provided but invalid
+    if (server.hasArg("token")) {
+      server.sendHeader("Location", "/?error=invalid_token");
+      server.send(302, "text/plain", "");
+      return;
+    }
+    
+    // Send login form
+    String loginForm = generateLoginForm();
+    server.send(200, "text/html", loginForm);
+    return;
+  }
   
   // Initialize SPIFFS if not already done
   if (!SPIFFS.begin()) {
@@ -836,14 +1140,20 @@ void handleRoot() {
         </div>
         
         <div class="controls">
-            <a href="/api/status" class="btn btn-success">📊 Status API</a>
-            <a href="/api/system" class="btn btn-warning">💻 System Info</a>
-            <a href="/api/wifi" class="btn btn-success">📶 WiFi Info</a>
+            <a href="/api/status?token=" class="btn btn-success">📊 Status API</a>
+            <a href="/api/system?token=" class="btn btn-warning">💻 System Info</a>
+            <a href="/api/wifi?token=" class="btn btn-success">📶 WiFi Info</a>
         </div>
         
         <div class="controls">
-            <a href="/led/toggle" class="btn">💡 Toggle LED</a>
-            <a href="/relay/toggle" class="btn">🔌 Toggle Relay</a>
+            <a href="/led/toggle?token=" class="btn">💡 Toggle LED</a>
+            <a href="/relay/toggle?token=" class="btn">🔌 Toggle Relay</a>
+        </div>
+        
+        <div class="status">
+            <strong>🔒 Security Status:</strong><br>
+            Token Required: )" + String(config.require_token ? "Yes" : "No") + R"(<br>
+            Security Level: )" + String(config.require_token ? "Protected" : "Open Access") + R"(
         </div>
         
         <div class="status">
@@ -871,18 +1181,33 @@ void handleRoot() {
 }
 
 void handleApiStatus() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String response = createStatusJson();
   server.send(200, "application/json", response);
   Serial.println("📡 API: Status requested");
 }
 
 void handleApiControl() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String response = createControlJson();
   server.send(200, "application/json", response);
   Serial.println("📡 API: Control status requested");
 }
 
 void handleApiControlPost() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String message = "";
   bool success = false;
   
@@ -913,6 +1238,11 @@ void handleApiControlPost() {
 }
 
 void handleApiSystem() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String json = "{";
   json += "\"chip_id\":" + String(ESP.getChipId()) + ",";
   json += "\"flash_size\":" + String(ESP.getFlashChipSize()) + ",";
@@ -928,6 +1258,11 @@ void handleApiSystem() {
 }
 
 void handleApiWifi() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String json = "{";
   json += "\"ssid\":\"" + WiFi.SSID() + "\",";
   json += "\"ip\":\"" + WiFi.localIP().toString() + "\",";
@@ -942,12 +1277,47 @@ void handleApiWifi() {
 }
 
 void handleApiReset() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
   String response = createJsonResponse("ok", "System will reset in 2 seconds");
   server.send(200, "application/json", response);
   
   Serial.println("🔄 System reset requested");
   delay(2000);
   ESP.restart();
+}
+
+void handleApiGenerateToken() {
+  if (!isAuthenticated()) {
+    sendUnauthorized();
+    return;
+  }
+  
+  String newToken = generateSimpleToken();
+  String json = "{";
+  json += "\"status\":\"ok\",";
+  json += "\"message\":\"New token generated\",";
+  json += "\"token\":\"" + newToken + "\",";
+  json += "\"note\":\"Update your config file with this token\"";
+  json += "}";
+  
+  server.send(200, "application/json", json);
+  Serial.println("🔑 New token generated: " + newToken);
+}
+
+void handleApiSecurityStatus() {
+  // This endpoint doesn't require authentication (for security info)
+  String json = "{";
+  json += "\"security_enabled\":" + String(config.require_token ? "true" : "false") + ",";
+  json += "\"token_required\":" + String(config.require_token ? "true" : "false") + ",";
+  json += "\"authentication_methods\":[\"url_parameter\",\"authorization_header\",\"x-token_header\"]";
+  json += "}";
+  
+  server.send(200, "application/json", json);
+  Serial.println("📡 API: Security status requested");
 }
 
 void handle404() {

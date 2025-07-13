@@ -8,6 +8,8 @@ use std::time::Duration;
 use std::process::Command;
 use log::warn;
 use serde_json::Value;
+use std::fs;
+use std::path::Path;
 
 pub struct ESP8266WebTester {
     pub verbose: bool,
@@ -405,9 +407,16 @@ impl ESP8266WebTester {
             "192.168.1.238",  // Common alternative
             "192.168.0.200",  // Common static IP
             "192.168.1.200",  
+            "192.168.0.100",  // Common router range
+            "192.168.1.100",
+            "192.168.0.150",
+            "192.168.1.150",
         ];
         
         for ip in known_ips {
+            if self.verbose {
+                println!("🔍 Testing IP: {}", ip);
+            }
             if self.instant_test_esp8266(ip)? {
                 if self.verbose {
                     println!("🎯 Found ESP8266 at known IP: {}", ip);
@@ -434,6 +443,9 @@ impl ESP8266WebTester {
             ];
             
             for ip in likely_ips {
+                if self.verbose {
+                    println!("🔍 Inspecting ESP8266 at: {}", ip);
+                }
                 if self.instant_test_esp8266(&ip)? {
                     if self.verbose {
                         println!("🎯 Found ESP8266 at: {}", ip);
@@ -452,6 +464,25 @@ impl ESP8266WebTester {
         // Ultra-fast TCP test (500ms timeout)
         if self.instant_tcp_test(ip, 80).is_err() {
             return Ok(false);
+        }
+        
+        // Test main page first (might show login form for secured ESP8266)
+        let main_url = format!("http://{}/", ip);
+        if let Ok(output) = std::process::Command::new("curl")
+            .args(&["-s", "-m", "1", "--connect-timeout", "0.5", &main_url])
+            .output()
+        {
+            if output.status.success() {
+                let response = String::from_utf8_lossy(&output.stdout);
+                // Check for ESP8266 signatures in the response
+                if response.contains("ESP8266") || 
+                   response.contains("Access Token Required") ||
+                   response.contains("Authentication Required") ||
+                   response.contains("NodeMCU") ||
+                   response.contains("Complete Server") {
+                    return Ok(true);
+                }
+            }
         }
         
         // Ultra-fast HTTP test for ESP8266 API
@@ -713,7 +744,11 @@ impl ESP8266WebTester {
         Ok(())
     }
     pub fn open_web_interface(&self, ip: &str) -> Result<()> {
-        let url = format!("http://{}", ip);
+        let url = if let Some(token) = read_access_token() {
+            format!("http://{}/?token={}", ip, token)
+        } else {
+            format!("http://{}", ip)
+        };
         
         #[cfg(target_os = "windows")]
         {
@@ -745,6 +780,18 @@ impl ESP8266WebTester {
         
         Ok(())
     }
+}
+
+fn read_access_token() -> Option<String> {
+    let config_path = Path::new("wifi_config.json");
+    if !config_path.exists() {
+        return None;
+    }
+
+    let content = fs::read_to_string(config_path).ok()?;
+    let config: Value = serde_json::from_str(&content).ok()?;
+    
+    config["security"]["access_token"].as_str().map(|s| s.to_string())
 }
 
 #[derive(Debug)]
